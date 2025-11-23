@@ -1,0 +1,119 @@
+.chat-input-container {
+    display: flex;
+    align-items: center;
+    background-color: var(--input-bg);
+    border-radius: 28px;
+    padding: 10px 15px;
+    width: 100%;
+    max-width: 800px;
+    margin-top: 20px;
+}
+
+.add-btn {
+    background: none;
+    border: none;
+    color: var(--icon-color);
+    font-size: 1.2rem;
+    cursor: pointer;
+    padding: 8px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: background-color 0.2s;
+}
+
+.add-btn:hover {
+    background-color: var(--hover-color);
+    color: var(--text-color);
+}
+
+.chat-input {
+    flex: 1;
+    background: none;
+    border: none;
+    color: var(--text-color);
+    font-size: 1rem;
+    padding: 0 15px;
+    outline: none;
+}
+
+.input-actions {
+    display: flex;
+    gap: 10px;
+}
+
+.action-btn {
+    background: none;
+    border: none;
+    color: var(--icon-color);
+    font-size: 1.1rem;
+    cursor: pointer;
+    padding: 8px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: background-color 0.2s;
+}
+
+.action-btn:hover {
+    background-color: var(--hover-color);
+    color: var(--text-color);
+}
+
+.relative-container {
+    position: relative;
+}
+
+.dropdown-menu {
+    position: absolute;
+    bottom: 100%;
+    left: 0;
+    background-color: var(--menu-bg);
+    border-radius: 8px;
+    padding: 5px;
+    display: flex;
+    flex-direction: column;
+    min-width: 150px;
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.3);
+    z-index: 10;
+    margin-bottom: 10px;
+}
+
+.mode-menu {
+    right: 0;
+    left: auto;
+}
+
+.dropdown-menu button {
+    background: none;
+    border: none;
+    color: var(--text-color);
+    padding: 8px 12px;
+    text-align: left;
+    cursor: pointer;
+    border-radius: 4px;
+    font-size: 0.9rem;
+}
+
+.dropdown-menu button:hover {
+    background-color: var(--hover-color);
+}
+
+@media (max-width: 768px) {
+    .chat-input-container {
+        width: 90%;
+        padding: 8px 10px;
+    }
+
+    .chat-input {
+        font-size: 0.9rem;
+    }
+
+    .add-btn,
+    .action-btn {
+        font-size: 1rem;
+        padding: 6px;
+    }
+}

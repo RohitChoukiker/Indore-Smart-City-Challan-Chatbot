@@ -1,0 +1,75 @@
+.home-container {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    height: 100%;
+    width: 100%;
+    padding: 20px;
+    box-sizing: border-box;
+}
+
+.branding-header {
+    position: absolute;
+    top: 40px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    text-align: center;
+}
+
+.brand-name {
+    font-size: 1.5rem;
+    font-weight: 600;
+    color: var(--text-color);
+    letter-spacing: 1px;
+    margin: 0;
+}
+
+.brand-subtitle {
+    font-size: 0.8rem;
+    color: var(--icon-color);
+    margin-top: 5px;
+    font-weight: 400;
+}
+
+.greeting {
+    font-size: 3rem;
+    font-weight: 500;
+    color: #5c5e60;
+    /* Slightly darker than white for the greeting */
+    margin-bottom: 40px;
+    background: linear-gradient(90deg, #4285f4, #9b72cb, #d96570, #d96570);
+    -webkit-background-clip: text;
+    background-clip: text;
+    -webkit-text-fill-color: transparent;
+    /* Fallback to white if gradient is too much, but user asked for Gemini look */
+    /* Actually, the screenshot shows white text "What can I help with?" */
+    /* Let's stick to the screenshot's white text */
+    background: none;
+    -webkit-text-fill-color: var(--text-color);
+    color: var(--text-color);
+}
+
+@media (max-width: 768px) {
+    .greeting {
+        font-size: 2rem;
+        text-align: center;
+    }
+
+    .home-container {
+        padding: 10px;
+    }
+
+    .branding-header {
+        top: 20px;
+    }
+
+    .brand-name {
+        font-size: 1.2rem;
+    }
+
+    .brand-subtitle {
+        font-size: 0.7rem;
+    }
+}
