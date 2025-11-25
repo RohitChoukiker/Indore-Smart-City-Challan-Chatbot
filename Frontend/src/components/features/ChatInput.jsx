@@ -1,6 +1,7 @@
 import React, { useState, useRef } from 'react';
 import { FaPlus, FaMicrophone } from 'react-icons/fa';
 import { IoMdPulse } from 'react-icons/io';
+import useClickOutside from '../../hooks/useClickOutside';
 import '../../styles/variables.css';
 import './ChatInput.css';
 
@@ -10,6 +11,12 @@ const ChatInput = () => {
     const [showModeMenu, setShowModeMenu] = useState(false);
     const [selectedMode, setSelectedMode] = useState('Text Mode');
     const fileInputRef = useRef(null);
+
+    const uploadMenuRef = useRef(null);
+    const modeMenuRef = useRef(null);
+
+    useClickOutside(uploadMenuRef, () => setShowUploadMenu(false));
+    useClickOutside(modeMenuRef, () => setShowModeMenu(false));
 
     const handleFileUpload = (e) => {
         const file = e.target.files[0];
@@ -43,7 +50,7 @@ const ChatInput = () => {
 
     return (
         <div className="chat-input-container">
-            <div className="relative-container">
+            <div className="relative-container" ref={uploadMenuRef}>
                 <button className="add-btn" onClick={() => setShowUploadMenu(!showUploadMenu)}>
                     <FaPlus />
                 </button>
@@ -74,7 +81,7 @@ const ChatInput = () => {
                     <FaMicrophone />
                 </button>
 
-                <div className="relative-container">
+                <div className="relative-container" ref={modeMenuRef}>
                     <button className="action-btn" onClick={() => setShowModeMenu(!showModeMenu)}>
                         <IoMdPulse />
                     </button>
