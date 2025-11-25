@@ -20,15 +20,14 @@ from utills.auth_utils import get_user_id_from_token
 from .auth_dto import (
     OtpRequest,
     OtpVerifyRequest,
-    SignupRequest,
-    LoginRequest
+    UpdateProfileRequest
 )
 from .auth_service import (
     request_otp_service,
     verify_otp_service,
-    signup_service,
-    login_service,
-    get_profile_service
+    get_profile_service,
+    set_mpin_service,
+    update_profile_service
 )
 
 # Create router
@@ -67,40 +66,11 @@ async def request_otp(req: OtpRequest):
 @authRouter.post("/verify-otp")
 async def verify_otp(req: OtpVerifyRequest):
     """
-    Verify OTP code.
+    Verify OTP code and log in.
     
-    Validates the OTP sent to user's email.
+    Validates the OTP and returns a JWT token.
     """
     return await verify_otp_service(req.email, req.otp)
-
-
-@authRouter.post("/signup")
-async def signup(req: SignupRequest):
-    """
-    User signup.
-    
-    Creates new user account after OTP verification.
-    Returns JWT token upon successful signup.
-    """
-    return await signup_service(
-        email=req.email,
-        otp=req.otp,
-        name=req.name,
-        department=req.department,
-        designation=req.designation,
-        mpin=req.mpin
-    )
-
-
-@authRouter.post("/login")
-async def login(req: LoginRequest):
-    """
-    User login.
-    
-    Authenticates user after OTP verification.
-    Returns JWT token upon successful login.
-    """
-    return await login_service(req.email, req.otp)
 
 
 @authRouter.get("/profile")
@@ -112,4 +82,31 @@ def get_profile(user_id: str = Depends(_user_id_dep)):
     Returns user profile information.
     """
     return get_profile_service(user_id)
+
+
+@authRouter.put("/profile")
+def update_profile(req: UpdateProfileRequest, user_id: str = Depends(_user_id_dep)):
+    """
+    Update user profile.
+    
+    Requires valid JWT Bearer token.
+    Updates name, department, and designation.
+    """
+    return update_profile_service(
+        user_id=user_id,
+        name=req.name,
+        department=req.department,
+        designation=req.designation
+    )
+
+
+@authRouter.post("/set-mpin")
+async def set_mpin(user_id: str = Depends(_user_id_dep)):
+    """
+    Generate and set MPIN.
+    
+    Requires valid JWT Bearer token.
+    Generates a patterned MPIN and emails it to the user.
+    """
+    return await set_mpin_service(user_id)
 

@@ -22,20 +22,14 @@ class OtpVerifyRequest(BaseModel):
     otp: str = Field(..., min_length=6, max_length=6, description="6-digit OTP code")
 
 
-class SignupRequest(BaseModel):
-    """Request model for user signup."""
-    email: EmailStr = Field(..., description="User email address")
-    otp: str = Field(..., min_length=6, max_length=6, description="6-digit OTP code")
+class UpdateProfileRequest(BaseModel):
+    """Request model for updating user profile."""
     name: Optional[str] = Field(None, description="User full name")
     department: Optional[str] = Field(None, description="User department")
     designation: Optional[str] = Field(None, description="User designation")
-    mpin: Optional[str] = Field(None, min_length=4, max_length=10, description="User MPIN")
 
 
-class LoginRequest(BaseModel):
-    """Request model for user login."""
-    email: EmailStr = Field(..., description="User email address")
-    otp: str = Field(..., min_length=6, max_length=6, description="6-digit OTP code")
+
 
 
 class TokenResponse(BaseModel):

@@ -87,14 +87,14 @@ async def request_otp_service(email: str) -> dict:
 
 async def verify_otp_service(email: str, otp: str) -> dict:
     """
-    Verify OTP for login/signup.
+    Verify OTP and log user in.
     
     Args:
         email: User email address
         otp: OTP code to verify
     
     Returns:
-        dict: Standardized response with status, message, and data
+        dict: Standardized response with token and user data
     """
     db: Session = SessionLocal()
     try:
@@ -145,10 +145,20 @@ async def verify_otp_service(email: str, otp: str) -> dict:
         user.otp_created_at = None
         db.commit()
         
+        # Create JWT token
+        token = create_token({"user_id": user.id})
+        
         return {
             "status": True,
             "message": "OTP verified successfully",
-            "data": None
+            "data": {
+                "token": token,
+                "user_id": user.id,
+                "email": user.email,
+                "name": user.name,
+                "department": user.department,
+                "designation": user.designation
+            }
         }
     except Exception as e:
         db.rollback()
@@ -161,189 +171,96 @@ async def verify_otp_service(email: str, otp: str) -> dict:
         db.close()
 
 
-async def signup_service(email: str, otp: str, name: Optional[str] = None, 
-                   department: Optional[str] = None, designation: Optional[str] = None,
-                   mpin: Optional[str] = None) -> dict:
+async def set_mpin_service(user_id: str) -> dict:
     """
-    User signup after OTP verification.
+    Generate and set MPIN for user, then email it.
     
     Args:
-        email: User email address
-        otp: OTP code
-        name: User full name
-        department: User department
-        designation: User designation
-        mpin: User MPIN
+        user_id: User ID
     
     Returns:
-        dict: Standardized response with token and user data
+        dict: Response status
     """
     db: Session = SessionLocal()
     try:
-        # Find user
-        user = db.query(Users).filter(Users.email == email).first()
-        
+        user = db.query(Users).filter(Users.id == user_id).first()
         if not user:
-            return {
+            return {"status": False, "message": "User not found", "data": None}
+            
+        # Generate patterned MPIN
+        from utills.auth_utils import generate_patterned_mpin
+        mpin = generate_patterned_mpin()
+        
+        # Set MPIN
+        user.mpin = mpin
+        user.updated_at = datetime.utcnow()
+        db.commit()
+        
+        # Send email
+        email_sent = await send_otp_email(user.email, mpin)
+        
+        if not email_sent:
+             return {
                 "status": False,
-                "message": "User not found. Please request OTP first.",
+                "message": "MPIN set but failed to send email.",
                 "data": None
             }
-        
-        # Verify OTP
-        if not user.otp:
-            return {
-                "status": False,
-                "message": "No OTP found. Please request a new OTP.",
-                "data": None
-            }
-        
-        if user.otp != otp:
-            return {
-                "status": False,
-                "message": "Invalid OTP. Please try again.",
-                "data": None
-            }
-        
-        # Check if OTP is expired
-        if user.otp_created_at:
-            expiration_time = user.otp_created_at + timedelta(minutes=OTP_EXPIRATION_MINUTES)
-            if datetime.utcnow() > expiration_time:
-                user.otp = None
-                user.otp_created_at = None
-                db.commit()
-                return {
-                    "status": False,
-                    "message": "OTP has expired. Please request a new OTP.",
-                    "data": None
-                }
-        
-        # Clear OTP after successful verification
-        user.otp = None
-        user.otp_created_at = None
-        
-        # Update user information
+            
+        return {
+            "status": True,
+            "message": "MPIN generated and sent to your email.",
+            "data": None
+        }
+    except Exception as e:
+        db.rollback()
+        return {"status": False, "message": str(e), "data": None}
+    finally:
+        db.close()
+
+
+def update_profile_service(user_id: str, name: Optional[str] = None, 
+                         department: Optional[str] = None, designation: Optional[str] = None) -> dict:
+    """
+    Update user profile.
+    
+    Args:
+        user_id: User ID
+        name: New name
+        department: New department
+        designation: New designation
+    
+    Returns:
+        dict: Response status
+    """
+    db: Session = SessionLocal()
+    try:
+        user = db.query(Users).filter(Users.id == user_id).first()
+        if not user:
+            return {"status": False, "message": "User not found", "data": None}
+            
         if name is not None:
             user.name = name
         if department is not None:
             user.department = department
         if designation is not None:
             user.designation = designation
-        if mpin is not None:
-            user.mpin = mpin
-        
+            
         user.updated_at = datetime.utcnow()
         db.commit()
-        db.refresh(user)
-        
-        # Create JWT token
-        token = create_token({"user_id": user.id})
         
         return {
             "status": True,
-            "message": "Signup successful",
+            "message": "Profile updated successfully",
             "data": {
-                "token": token,
-                "user_id": user.id,
-                "email": user.email,
-                "name": user.name
+                "id": user.id,
+                "name": user.name,
+                "department": user.department,
+                "designation": user.designation
             }
         }
     except Exception as e:
         db.rollback()
-        return {
-            "status": False,
-            "message": str(e),
-            "data": None
-        }
-    finally:
-        db.close()
-
-
-async def login_service(email: str, otp: str) -> dict:
-    """
-    User login after OTP verification.
-    
-    Args:
-        email: User email address
-        otp: OTP code
-    
-    Returns:
-        dict: Standardized response with token and user data
-    """
-    db: Session = SessionLocal()
-    try:
-        # Find user
-        user = db.query(Users).filter(Users.email == email).first()
-        
-        if not user:
-            return {
-                "status": False,
-                "message": "User not found. Please signup first.",
-                "data": None
-            }
-        
-        # Verify OTP
-        if not user.otp:
-            return {
-                "status": False,
-                "message": "No OTP found. Please request a new OTP.",
-                "data": None
-            }
-        
-        if user.otp != otp:
-            return {
-                "status": False,
-                "message": "Invalid OTP. Please try again.",
-                "data": None
-            }
-        
-        # Check if OTP is expired
-        if user.otp_created_at:
-            expiration_time = user.otp_created_at + timedelta(minutes=OTP_EXPIRATION_MINUTES)
-            if datetime.utcnow() > expiration_time:
-                user.otp = None
-                user.otp_created_at = None
-                db.commit()
-                return {
-                    "status": False,
-                    "message": "OTP has expired. Please request a new OTP.",
-                    "data": None
-                }
-        
-        # Check if user has completed signup (has name or other details)
-        if not user.name and not user.department:
-            return {
-                "status": False,
-                "message": "User profile incomplete. Please complete signup first.",
-                "data": None
-            }
-        
-        # Clear OTP after successful verification
-        user.otp = None
-        user.otp_created_at = None
-        db.commit()
-        
-        # Create JWT token
-        token = create_token({"user_id": user.id})
-        
-        return {
-            "status": True,
-            "message": "Login successful",
-            "data": {
-                "token": token,
-                "user_id": user.id,
-                "email": user.email,
-                "name": user.name
-            }
-        }
-    except Exception as e:
-        db.rollback()
-        return {
-            "status": False,
-            "message": str(e),
-            "data": None
-        }
+        return {"status": False, "message": str(e), "data": None}
     finally:
         db.close()
 
@@ -393,4 +310,3 @@ def get_profile_service(user_id: str) -> dict:
         }
     finally:
         db.close()
-

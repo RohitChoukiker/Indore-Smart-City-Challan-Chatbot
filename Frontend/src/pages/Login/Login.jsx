@@ -11,35 +11,55 @@ const Login = () => {
     const [mpin, setMpin] = useState('');
     const [otpSent, setOtpSent] = useState(false);
     const [showSignUp, setShowSignUp] = useState(false);
+    const [loading, setLoading] = useState(false);
+    const [error, setError] = useState('');
 
-    const { login } = useAuth();
+    const { login, requestOTP } = useAuth();
     const navigate = useNavigate();
 
-    const handleSendOtp = () => {
-        if (email) {
-            console.log(`Sending OTP to ${email}`);
-            alert(`OTP sent to ${email}. Use 123456 for testing.`);
+    const handleSendOtp = async () => {
+        if (!email) {
+            setError('Please enter a valid email.');
+            return;
+        }
+
+        setLoading(true);
+        setError('');
+
+        const result = await requestOTP(email);
+
+        setLoading(false);
+
+        if (result.success) {
             setOtpSent(true);
+            alert(result.message || 'OTP sent successfully!');
         } else {
-            alert('Please enter a valid email.');
+            setError(result.message || 'Failed to send OTP.');
         }
     };
 
-    const handleLogin = () => {
+    const handleLogin = async () => {
         if (activeTab === 'email') {
-            if (otp === '123456') {
-                login('email', { email });
+            if (!otp) {
+                setError('Please enter the OTP.');
+                return;
+            }
+
+            setLoading(true);
+            setError('');
+
+            const result = await login(email, otp);
+
+            setLoading(false);
+
+            if (result.success) {
                 navigate('/');
             } else {
-                alert('Invalid OTP. Please try again.');
+                setError(result.message || 'Invalid OTP. Please try again.');
             }
         } else {
-            if (mpin === '123456') {
-                login('mpin', { mpin });
-                navigate('/');
-            } else {
-                alert('Invalid MPIN. Please try again.');
-            }
+            // MPIN login - not yet implemented in backend
+            setError('MPIN login is not yet available. Please use Email & OTP.');
         }
     };
 
@@ -64,6 +84,8 @@ const Login = () => {
                     </button>
                 </div>
 
+                {error && <div className="error-message">{error}</div>}
+
                 <div className="login-form">
                     {activeTab === 'email' ? (
                         <>
@@ -75,6 +97,7 @@ const Login = () => {
                                     placeholder="Enter your email"
                                     value={email}
                                     onChange={(e) => setEmail(e.target.value)}
+                                    disabled={loading}
                                 />
                             </div>
                             <div className="form-group">
@@ -86,14 +109,14 @@ const Login = () => {
                                         placeholder="Enter OTP"
                                         value={otp}
                                         onChange={(e) => setOtp(e.target.value)}
-                                        disabled={!otpSent}
+                                        disabled={!otpSent || loading}
                                     />
                                     <button
                                         className="send-otp-btn"
                                         onClick={handleSendOtp}
-                                        disabled={otpSent}
+                                        disabled={otpSent || loading}
                                     >
-                                        {otpSent ? 'Sent' : 'Send OTP'}
+                                        {loading ? 'Sending...' : otpSent ? 'Sent' : 'Send OTP'}
                                     </button>
                                 </div>
                             </div>
@@ -108,12 +131,17 @@ const Login = () => {
                                 maxLength="6"
                                 value={mpin}
                                 onChange={(e) => setMpin(e.target.value)}
+                                disabled={loading}
                             />
                         </div>
                     )}
 
-                    <button className="login-btn" onClick={handleLogin}>
-                        Login
+                    <button
+                        className="login-btn"
+                        onClick={handleLogin}
+                        disabled={loading}
+                    >
+                        {loading ? 'Logging in...' : 'Login'}
                     </button>
                 </div>
 
