@@ -1,8 +1,9 @@
-import React, { useState } from 'react';
+import React, { useState, useRef } from 'react';
 import { FaUser, FaMoon, FaSun, FaSignOutAlt, FaUserCircle } from 'react-icons/fa';
 import { useTheme } from '../../context/ThemeContext';
 import { useAuth } from '../../context/AuthContext';
 import ProfileModal from './ProfileModal';
+import useClickOutside from '../../hooks/useClickOutside';
 
 import './ProfileSection.css';
 
@@ -11,6 +12,9 @@ const ProfileSection = () => {
     const [showProfileModal, setShowProfileModal] = useState(false);
     const { theme, toggleTheme } = useTheme();
     const { logout, user } = useAuth();
+
+    const menuRef = useRef(null);
+    useClickOutside(menuRef, () => setShowMenu(false));
 
     const handleGetProfile = () => {
         setShowMenu(false);
@@ -21,7 +25,7 @@ const ProfileSection = () => {
 
     return (
         <>
-            <div className="profile-section">
+            <div className="profile-section" ref={menuRef}>
                 {showMenu && (
                     <div className="profile-menu">
                         <button onClick={handleGetProfile}>
