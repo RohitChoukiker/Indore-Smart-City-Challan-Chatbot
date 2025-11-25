@@ -58,6 +58,11 @@ export const authAPI = {
         return await apiClient.post('/auth/verify-otp', { email, otp });
     },
 
+    // Login with MPIN
+    loginMPIN: async (email, mpin) => {
+        return await apiClient.post('/auth/login-mpin', { email, mpin });
+    },
+
     // Get user profile
     getProfile: async () => {
         return await apiClient.get('/auth/profile');

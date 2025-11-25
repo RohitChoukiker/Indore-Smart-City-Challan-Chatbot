@@ -11,7 +11,7 @@
     z-index: 1000;
 }
 
-.profile-modal-content {
+.mpin-modal-content {
     background-color: var(--sidebar-bg);
     padding: 30px;
     border-radius: 16px;
@@ -52,47 +52,22 @@
     background-color: var(--hover-color);
 }
 
-.profile-form {
-    display: flex;
-    flex-direction: column;
-    gap: 15px;
-    margin-bottom: 25px;
+.mpin-info {
+    text-align: center;
+    padding: 20px;
+    margin-bottom: 20px;
 }
 
-.form-group {
-    display: flex;
-    flex-direction: column;
-    align-items: flex-start;
+.mpin-icon {
+    font-size: 3rem;
+    color: #4285f4;
+    margin-bottom: 15px;
 }
 
-.form-group label {
-    font-size: 0.85rem;
-    margin-bottom: 5px;
+.mpin-description {
     color: var(--icon-color);
-}
-
-.form-input {
-    width: 100%;
-    padding: 12px;
-    border-radius: 8px;
-    border: 1px solid var(--accent-color);
-    background-color: var(--input-bg);
-    color: var(--text-color);
-    font-size: 1rem;
-    box-sizing: border-box;
-}
-
-.form-input:focus {
-    outline: none;
-    border-color: #4285f4;
-}
-
-.form-input.disabled {
-    background-color: transparent;
-    border: 1px solid transparent;
-    padding-left: 0;
-    color: var(--text-color);
-    font-weight: 500;
+    font-size: 0.95rem;
+    line-height: 1.5;
 }
 
 .modal-actions {
@@ -100,14 +75,6 @@
     flex-direction: row;
     gap: 15px;
     margin-top: 20px;
-}
-
-.edit-btn,
-.save-btn {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    gap: 8px;
 }
 
 .primary-btn {
@@ -151,38 +118,35 @@
     cursor: not-allowed;
 }
 
-.toast-notification {
-    position: fixed;
-    top: 20px;
-    right: 20px;
-    background-color: #4caf50;
-    color: white;
-    padding: 15px 25px;
-    border-radius: 8px;
-    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
-    font-size: 0.95rem;
-    font-weight: 500;
-    z-index: 1001;
-    animation: slideIn 0.3s ease-out;
-}
-
-@keyframes slideIn {
-    from {
-        transform: translateX(100%);
-        opacity: 0;
-    }
-
-    to {
-        transform: translateX(0);
-        opacity: 1;
-    }
-}
-
-.loading-message {
+.success-content {
     text-align: center;
     padding: 40px 20px;
+}
+
+.success-icon {
+    width: 60px;
+    height: 60px;
+    background-color: #4caf50;
+    color: white;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 2rem;
+    font-weight: bold;
+    margin: 0 auto 20px;
+}
+
+.success-message {
+    font-size: 1.1rem;
+    font-weight: 500;
+    color: var(--text-color);
+    margin-bottom: 10px;
+}
+
+.success-submessage {
     color: var(--icon-color);
-    font-size: 1rem;
+    font-size: 0.9rem;
 }
 
 .error-message {

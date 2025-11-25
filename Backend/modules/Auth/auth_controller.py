@@ -20,11 +20,13 @@ from utills.auth_utils import get_user_id_from_token
 from .auth_dto import (
     OtpRequest,
     OtpVerifyRequest,
+    MPINLoginRequest,
     UpdateProfileRequest
 )
 from .auth_service import (
     request_otp_service,
     verify_otp_service,
+    mpin_login_service,
     get_profile_service,
     set_mpin_service,
     update_profile_service
@@ -71,6 +73,16 @@ async def verify_otp(req: OtpVerifyRequest):
     Validates the OTP and returns a JWT token.
     """
     return await verify_otp_service(req.email, req.otp)
+
+
+@authRouter.post("/login-mpin")
+async def login_mpin(req: MPINLoginRequest):
+    """
+    Login with MPIN.
+    
+    Validates the MPIN and returns a JWT token.
+    """
+    return await mpin_login_service(req.email, req.mpin)
 
 
 @authRouter.get("/profile")

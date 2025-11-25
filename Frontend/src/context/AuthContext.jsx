@@ -96,12 +96,40 @@ export const AuthProvider = ({ children }) => {
         }
     };
 
+    const loginMPIN = async (email, mpin) => {
+        try {
+            const response = await authAPI.loginMPIN(email, mpin);
+
+            if (response.status) {
+                const { token, ...userData } = response.data;
+
+                // Store token and user data
+                localStorage.setItem(STORAGE_KEYS.TOKEN, token);
+                localStorage.setItem(STORAGE_KEYS.USER, JSON.stringify(userData));
+
+                setIsAuthenticated(true);
+                setUser(userData);
+
+                return { success: true };
+            } else {
+                return { success: false, message: response.message };
+            }
+        } catch (error) {
+            console.error('MPIN Login error:', error);
+            return {
+                success: false,
+                message: error.message || 'MPIN login failed. Please try again.'
+            };
+        }
+    };
+
     return (
         <AuthContext.Provider value={{
             isAuthenticated,
             user,
             loading,
             login,
+            loginMPIN,
             logout,
             updateProfile,
             requestOTP

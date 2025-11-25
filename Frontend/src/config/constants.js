@@ -6,6 +6,7 @@ export const API_ENDPOINTS = {
   AUTH: {
     REQUEST_OTP: '/auth/request-otp',
     VERIFY_OTP: '/auth/verify-otp',
+    LOGIN_MPIN: '/auth/login-mpin',
     PROFILE: '/auth/profile',
     SET_MPIN: '/auth/set-mpin',
   },

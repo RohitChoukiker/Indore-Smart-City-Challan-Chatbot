@@ -171,6 +171,71 @@ async def verify_otp_service(email: str, otp: str) -> dict:
         db.close()
 
 
+async def mpin_login_service(email: str, mpin: str) -> dict:
+    """
+    Login user with MPIN.
+    
+    Args:
+        email: User email address
+        mpin: 6-digit MPIN
+    
+    Returns:
+        dict: Standardized response with token and user data
+    """
+    db: Session = SessionLocal()
+    try:
+        # Find user
+        user = db.query(Users).filter(Users.email == email).first()
+        
+        if not user:
+            return {
+                "status": False,
+                "message": "User not found. Please sign up first.",
+                "data": None
+            }
+        
+        # Check if MPIN is set
+        if not user.mpin:
+            return {
+                "status": False,
+                "message": "MPIN not set. Please use OTP login or set your MPIN first.",
+                "data": None
+            }
+        
+        # Check if MPIN matches
+        if user.mpin != mpin:
+            return {
+                "status": False,
+                "message": "Invalid MPIN. Please try again.",
+                "data": None
+            }
+        
+        # MPIN is valid - create JWT token
+        token = create_token({"user_id": user.id})
+        
+        return {
+            "status": True,
+            "message": "Login successful",
+            "data": {
+                "token": token,
+                "user_id": user.id,
+                "email": user.email,
+                "name": user.name,
+                "department": user.department,
+                "designation": user.designation
+            }
+        }
+    except Exception as e:
+        db.rollback()
+        return {
+            "status": False,
+            "message": str(e),
+            "data": None
+        }
+    finally:
+        db.close()
+
+
 async def set_mpin_service(user_id: str) -> dict:
     """
     Generate and set MPIN for user, then email it.

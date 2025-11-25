@@ -13,9 +13,15 @@ const Login = () => {
     const [showSignUp, setShowSignUp] = useState(false);
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState('');
+    const [toast, setToast] = useState('');
 
-    const { login, requestOTP } = useAuth();
+    const { login, loginMPIN, requestOTP } = useAuth();
     const navigate = useNavigate();
+
+    const showToast = (message) => {
+        setToast(message);
+        setTimeout(() => setToast(''), 3000);
+    };
 
     const handleSendOtp = async () => {
         if (!email) {
@@ -32,7 +38,7 @@ const Login = () => {
 
         if (result.success) {
             setOtpSent(true);
-            alert(result.message || 'OTP sent successfully!');
+            showToast('OTP sent successfully to your email!');
         } else {
             setError(result.message || 'Failed to send OTP.');
         }
@@ -58,13 +64,35 @@ const Login = () => {
                 setError(result.message || 'Invalid OTP. Please try again.');
             }
         } else {
-            // MPIN login - not yet implemented in backend
-            setError('MPIN login is not yet available. Please use Email & OTP.');
+            // MPIN login
+            if (!email) {
+                setError('Please enter your email.');
+                return;
+            }
+            if (!mpin) {
+                setError('Please enter your MPIN.');
+                return;
+            }
+
+            setLoading(true);
+            setError('');
+
+            const result = await loginMPIN(email, mpin);
+
+            setLoading(false);
+
+            if (result.success) {
+                navigate('/');
+            } else {
+                setError(result.message || 'Invalid MPIN. Please try again.');
+            }
         }
     };
 
     return (
         <div className="login-container">
+            {toast && <div className="toast-notification">{toast}</div>}
+
             <div className="login-card">
                 <h2 className="login-title">Welcome Back</h2>
                 <p className="login-subtitle">Please login to your account</p>
@@ -122,18 +150,31 @@ const Login = () => {
                             </div>
                         </>
                     ) : (
-                        <div className="form-group">
-                            <label>Enter MPIN</label>
-                            <input
-                                type="password"
-                                className="form-input"
-                                placeholder="Enter 6-digit MPIN"
-                                maxLength="6"
-                                value={mpin}
-                                onChange={(e) => setMpin(e.target.value)}
-                                disabled={loading}
-                            />
-                        </div>
+                        <>
+                            <div className="form-group">
+                                <label>Email Address</label>
+                                <input
+                                    type="email"
+                                    className="form-input"
+                                    placeholder="Enter your email"
+                                    value={email}
+                                    onChange={(e) => setEmail(e.target.value)}
+                                    disabled={loading}
+                                />
+                            </div>
+                            <div className="form-group">
+                                <label>Enter MPIN</label>
+                                <input
+                                    type="password"
+                                    className="form-input"
+                                    placeholder="Enter 6-digit MPIN"
+                                    maxLength="6"
+                                    value={mpin}
+                                    onChange={(e) => setMpin(e.target.value)}
+                                    disabled={loading}
+                                />
+                            </div>
+                        </>
                     )}
 
                     <button
@@ -145,12 +186,13 @@ const Login = () => {
                     </button>
                 </div>
 
-                <div className="signup-link">
+                {/* Removed signup link as requested previously, but keeping the state for now if needed later */}
+                {/* <div className="signup-link">
                     Don't have an account?
                     <button className="create-account-btn" onClick={() => setShowSignUp(true)}>
                         Create Now
                     </button>
-                </div>
+                </div> */}
             </div>
 
             {showSignUp && <SignUpModal onClose={() => setShowSignUp(false)} />}

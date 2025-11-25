@@ -90,3 +90,27 @@ def get_user_id_from_token(authorization: Optional[str]) -> Optional[str]:
     except (ValueError, AttributeError):
         return None
 
+
+def generate_patterned_mpin() -> str:
+    """
+    Generate a 6-digit MPIN with repeating pattern n(n+1)n(n+1)n(n+1).
+    
+    Examples:
+        - 121212
+        - 232323
+        - 454545
+    
+    Returns:
+        str: 6-digit patterned MPIN
+    """
+    import random
+    
+    # Generate random digit from 0-8 (so n+1 doesn't exceed 9)
+    n = random.randint(0, 8)
+    n_plus_1 = n + 1
+    
+    # Create pattern: n(n+1)n(n+1)n(n+1)
+    mpin = f"{n}{n_plus_1}{n}{n_plus_1}{n}{n_plus_1}"
+    
+    return mpin
+
