@@ -24,8 +24,8 @@
 }
 
 .add-btn:hover {
-    background-color: var(--hover-color);
-    color: var(--text-color);
+    background-color: var(--accent-color);
+    color: var(--brand-color);
 }
 
 .chat-input {
@@ -58,8 +58,8 @@
 }
 
 .action-btn:hover {
-    background-color: var(--hover-color);
-    color: var(--text-color);
+    background-color: var(--accent-color);
+    color: var(--brand-color);
 }
 
 .relative-container {
@@ -98,7 +98,8 @@
 }
 
 .dropdown-menu button:hover {
-    background-color: var(--hover-color);
+    background-color: var(--accent-color);
+    color: var(--brand-color);
 }
 
 @media (max-width: 768px) {

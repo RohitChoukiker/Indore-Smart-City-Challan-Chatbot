@@ -5,7 +5,7 @@ import useClickOutside from '../../hooks/useClickOutside';
 import '../../styles/variables.css';
 import './ChatInput.css';
 
-const ChatInput = () => {
+const ChatInput = ({ onMessageSent }) => {
     const [input, setInput] = useState('');
     const [showUploadMenu, setShowUploadMenu] = useState(false);
     const [showModeMenu, setShowModeMenu] = useState(false);
@@ -48,6 +48,24 @@ const ChatInput = () => {
         console.log('Mode selected:', mode);
     };
 
+    const handleSend = () => {
+        if (input.trim()) {
+            console.log('Message sent:', input);
+            // Handle message sending logic here
+            if (onMessageSent) {
+                onMessageSent();
+            }
+            setInput(''); // Clear input after sending
+        }
+    };
+
+    const handleKeyPress = (e) => {
+        if (e.key === 'Enter' && !e.shiftKey) {
+            e.preventDefault();
+            handleSend();
+        }
+    };
+
     return (
         <div className="chat-input-container">
             <div className="relative-container" ref={uploadMenuRef}>
@@ -73,6 +91,7 @@ const ChatInput = () => {
                 placeholder={`Ask anything (${selectedMode})`}
                 value={input}
                 onChange={(e) => setInput(e.target.value)}
+                onKeyPress={handleKeyPress}
                 className="chat-input"
             />
 

@@ -1,25 +1,35 @@
 :root {
-  /* Dark Mode (Default) */
-  --bg-color: #131314;
-  --sidebar-bg: #1e1f20;
-  --input-bg: #1e1f20;
-  --menu-bg: #2d2e30;
-  --text-color: #e3e3e3;
-  --accent-color: #444746;
-  --hover-color: #333537;
-  --icon-color: #c4c7c5;
+  /* Warm Dark Mode (Default) - Greyish charcoal tones */
+  --bg-color: #2A2A2E;
+  --sidebar-bg: #3E3E42;
+  --input-bg: #3E3E42;
+  --menu-bg: #4A4A4E;
+  --text-color: #E8E6E3;
+  --accent-color: #D4A574;
+  --hover-color: #4A4A4E;
+  --icon-color: #C4B5A0;
+  --brand-color: #E8B86D;
+  --brand-hover: #F5C97A;
+  --logo-shadow: rgba(232, 184, 109, 0.3);
+  --header-glow: rgba(232, 184, 109, 0.1);
   --font-family: 'Inter', sans-serif;
+  --heading-font: 'Outfit', sans-serif;
 }
 
 [data-theme="light"] {
-  --bg-color: #ffffff;
-  --sidebar-bg: #f0f4f9;
-  --input-bg: #f0f4f9;
-  --menu-bg: #ffffff;
-  --text-color: #1f1f1f;
-  --accent-color: #e3e3e3;
-  --hover-color: #e3e3e3;
-  --icon-color: #444746;
+  /* Warm Light Mode - Cream/beige tones */
+  --bg-color: #FFF9F0;
+  --sidebar-bg: #F5F1E8;
+  --input-bg: #F5F1E8;
+  --menu-bg: #FEFDFB;
+  --text-color: #3D3935;
+  --accent-color: #E8B86D;
+  --hover-color: #F0E6D8;
+  --icon-color: #8B7E6A;
+  --brand-color: #D4763C;
+  --brand-hover: #E8854A;
+  --logo-shadow: rgba(212, 118, 60, 0.25);
+  --header-glow: rgba(212, 118, 60, 0.08);
 }
 
 * {

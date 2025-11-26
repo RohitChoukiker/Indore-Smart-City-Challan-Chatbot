@@ -11,44 +11,54 @@
 
 .branding-header {
     position: absolute;
-    top: 40px;
+    top: 20px;
+    left: 24px;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+
+.logo-container {
+    width: 36px;
+    height: 36px;
+}
+
+.brand-logo {
+    width: 100%;
+    height: 100%;
+    object-fit: contain;
+    display: block;
+}
+
+.brand-text {
     display: flex;
     flex-direction: column;
-    align-items: center;
-    text-align: center;
+    gap: 2px;
 }
 
 .brand-name {
-    font-size: 1.5rem;
-    font-weight: 600;
-    color: var(--text-color);
-    letter-spacing: 1px;
+    font-family: var(--heading-font);
+    font-size: 1.1rem;
+    font-weight: 700;
+    color: var(--brand-color);
+    letter-spacing: 0.3px;
     margin: 0;
 }
 
 .brand-subtitle {
-    font-size: 0.8rem;
+    font-family: var(--font-family);
+    font-size: 0.7rem;
     color: var(--icon-color);
-    margin-top: 5px;
+    margin: 0;
     font-weight: 400;
 }
 
 .greeting {
+    font-family: var(--heading-font);
     font-size: 3rem;
     font-weight: 500;
-    color: #5c5e60;
-    /* Slightly darker than white for the greeting */
-    margin-bottom: 40px;
-    background: linear-gradient(90deg, #4285f4, #9b72cb, #d96570, #d96570);
-    -webkit-background-clip: text;
-    background-clip: text;
-    -webkit-text-fill-color: transparent;
-    /* Fallback to white if gradient is too much, but user asked for Gemini look */
-    /* Actually, the screenshot shows white text "What can I help with?" */
-    /* Let's stick to the screenshot's white text */
-    background: none;
-    -webkit-text-fill-color: var(--text-color);
     color: var(--text-color);
+    margin-bottom: 40px;
 }
 
 @media (max-width: 768px) {
@@ -62,14 +72,21 @@
     }
 
     .branding-header {
-        top: 20px;
+        top: 16px;
+        left: 16px;
+        gap: 10px;
+    }
+
+    .logo-container {
+        width: 32px;
+        height: 32px;
     }
 
     .brand-name {
-        font-size: 1.2rem;
+        font-size: 1rem;
     }
 
     .brand-subtitle {
-        font-size: 0.7rem;
+        font-size: 0.65rem;
     }
 }
