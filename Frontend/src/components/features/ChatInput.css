@@ -10,6 +10,13 @@
     margin-top: auto;
 }
 
+/* Center ChatInput when no messages exist - remove auto margin */
+.content-wrapper:not(:has(.messages-container)) .chat-input-container {
+    margin-top: 0;
+    position: relative;
+    transform: none;
+}
+
 .add-btn {
     background: none;
     border: none;

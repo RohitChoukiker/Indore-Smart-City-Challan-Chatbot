@@ -21,11 +21,31 @@
     min-height: 0;
     gap: 20px;
     overflow: hidden;
+    position: relative;
 }
 
-/* When there are messages, adjust layout */
-.home-container:has(.messages-container:not(:empty)) .content-wrapper {
-    padding-top: 0;
+/* Center greeting and ChatInput together when no messages */
+.content-wrapper:not(:has(.messages-container)) {
+    justify-content: center;
+    align-items: center;
+}
+
+.content-wrapper:not(:has(.messages-container)) .greeting {
+    position: relative;
+    transform: none;
+    margin: 0 0 60px 0;
+    z-index: 1;
+}
+
+/* When messages exist, change justify to flex-start */
+.content-wrapper:has(.messages-container) {
+    padding-top: 20px;
+    justify-content: flex-start;
+}
+
+.content-wrapper:has(.messages-container) .greeting {
+    position: static;
+    transform: none;
 }
 
 .branding-header {
@@ -77,14 +97,14 @@
     font-size: 3rem;
     font-weight: 500;
     color: var(--text-color);
-    margin: 0 0 40px 0;
+    margin: 0;
     text-align: center;
     width: 100%;
     flex-shrink: 0;
 }
 
 /* Hide greeting when messages exist */
-.home-container:has(.messages-container:not(:empty)) .greeting {
+.home-container:has(.messages-container) .greeting {
     display: none;
 }
 

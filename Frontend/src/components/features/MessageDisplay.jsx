@@ -17,7 +17,11 @@ const MessageDisplay = ({ messages, isLoading }) => {
     // Get user initial for avatar (same as ProfileSection)
     const userInitial = user?.name ? user.name.charAt(0).toUpperCase() : <FaUser />;
 
-    // Always render container for consistent layout
+    // Only render container when there are messages or loading
+    if ((!messages || messages.length === 0) && !isLoading) {
+        return null;
+    }
+
     return (
         <div className="messages-container">
             {messages && messages.length > 0 && messages.map((message, index) => (
