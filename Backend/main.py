@@ -10,6 +10,7 @@ from fastapi.middleware.cors import CORSMiddleware
 
 # Local application imports
 from modules.Auth.auth_controller import authRouter
+from modules.Agent.agent_controller import agentRouter
 
 # Create FastAPI app
 app = FastAPI(
@@ -29,6 +30,7 @@ app.add_middleware(
 
 # Register routers
 app.include_router(authRouter, prefix="/api/auth", tags=["Authentication"])
+app.include_router(agentRouter, prefix="/api/agent", tags=["Agent"])
 
 
 @app.get("/")
@@ -52,4 +54,5 @@ def health_check():
         "message": "API is healthy",
         "data": None
     }
+
 

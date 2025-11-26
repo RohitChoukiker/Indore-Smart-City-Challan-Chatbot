@@ -10,6 +10,10 @@ export const API_ENDPOINTS = {
     PROFILE: '/auth/profile',
     SET_MPIN: '/auth/set-mpin',
   },
+  AGENT: {
+    UPLOAD_EXCEL: '/agent/upload-excel',
+    QUERY: '/agent/query',
+  },
 };
 
 // Storage Keys

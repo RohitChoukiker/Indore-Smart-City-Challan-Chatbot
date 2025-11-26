@@ -122,3 +122,4 @@ async def set_mpin(user_id: str = Depends(_user_id_dep)):
     """
     return await set_mpin_service(user_id)
 
+

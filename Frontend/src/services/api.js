@@ -79,4 +79,23 @@ export const authAPI = {
     },
 };
 
+// Agent API functions
+export const agentAPI = {
+    // Upload Excel file
+    uploadExcel: async (file) => {
+        const formData = new FormData();
+        formData.append('file', file);
+        return await apiClient.post('/agent/upload-excel', formData, {
+            headers: {
+                'Content-Type': 'multipart/form-data',
+            },
+        });
+    },
+
+    // Query with natural language
+    query: async (query, topK = 5) => {
+        return await apiClient.post('/agent/query', { query, top_k: topK });
+    },
+};
+
 export default apiClient;

@@ -15,7 +15,7 @@ from typing import Optional
 
 # Third-party imports
 from dotenv import load_dotenv
-from sqlalchemy import Column, String, DateTime, create_engine
+from sqlalchemy import Column, String, DateTime, create_engine, JSON, Text, Integer
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import sessionmaker, Session
 
@@ -79,4 +79,33 @@ class Users(Base):
     # Timestamps
     created_at = Column(DateTime, default=datetime.utcnow)
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+
+
+class ExcelUploads(Base):
+    """
+    ExcelUploads metadata table.
+    
+    Tracks uploaded Excel files and their corresponding dynamic table names.
+    Each upload is associated with a user_id for data isolation.
+    """
+    __tablename__ = "excel_uploads"
+    
+    # Primary key
+    id = Column(String(36), primary_key=True, default=generate_uuid)
+    
+    # User association (for data isolation)
+    user_id = Column(String(36), nullable=False, index=True)
+    
+    # Upload information
+    filename = Column(String(500), nullable=False)
+    table_name = Column(String(100), nullable=False, unique=True, index=True)
+    columns = Column(JSON, nullable=False)  # List of column names from Excel
+    
+    # Statistics
+    row_count = Column(Integer, nullable=False, default=0)
+    
+    # Timestamps
+    created_at = Column(DateTime, default=datetime.utcnow)
+    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+
 

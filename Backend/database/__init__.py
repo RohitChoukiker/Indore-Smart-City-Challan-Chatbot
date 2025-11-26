@@ -8,7 +8,8 @@ Exports database session and models for use across the application.
 from sqlalchemy.orm import Session
 
 # Local application imports
-from database.models import Base, SessionLocal, engine, Users
+from database.models import Base, SessionLocal, engine, Users, ExcelUploads
 
-__all__ = ["Base", "SessionLocal", "engine", "Users", "Session"]
+__all__ = ["Base", "SessionLocal", "engine", "Users", "ExcelUploads", "Session"]
+
 

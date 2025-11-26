@@ -53,3 +53,4 @@ class UserProfileResponse(BaseModel):
     designation: Optional[str]
     created_at: Optional[str]
 
+
