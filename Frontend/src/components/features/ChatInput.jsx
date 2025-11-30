@@ -191,6 +191,9 @@ const ChatInput = ({ onMessageSent, onQueryLoading }) => {
             const queryText = input.trim();
             console.log('Message sent:', queryText);
             
+            // Extract mode from selectedMode (e.g., "Text Mode" -> "text")
+            const mode = selectedMode.toLowerCase().replace(' mode', '');
+            
             // Set loading state
             if (onQueryLoading) {
                 onQueryLoading(true);
@@ -200,8 +203,8 @@ const ChatInput = ({ onMessageSent, onQueryLoading }) => {
             setInput('');
             
             try {
-                // Call query API
-                const response = await agentAPI.query(queryText);
+                // Call query API with mode
+                const response = await agentAPI.query(queryText, 5, mode);
                 
                 // Handle response
                 if (response.status) {

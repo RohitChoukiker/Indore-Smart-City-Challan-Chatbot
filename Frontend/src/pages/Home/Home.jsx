@@ -20,6 +20,9 @@ const Home = () => {
             type: 'bot',
             answer: response.data?.answer || response.message || 'No response received',
             results: response.data?.results || null,
+            mode: response.data?.mode || 'text',
+            visualization_data: response.data?.visualization_data || null,
+            table_data: response.data?.table_data || null,
             timestamp: new Date().toISOString(),
         } : null;
 

@@ -93,8 +93,12 @@ export const agentAPI = {
     },
 
     // Query with natural language
-    query: async (query, topK = 5) => {
-        return await apiClient.post('/agent/query', { query, top_k: topK });
+    query: async (query, topK = 5, mode = 'text') => {
+        return await apiClient.post('/agent/query', { 
+            query, 
+            top_k: topK,
+            mode: mode.toLowerCase() // 'text', 'graph', or 'table'
+        });
     },
 };
 

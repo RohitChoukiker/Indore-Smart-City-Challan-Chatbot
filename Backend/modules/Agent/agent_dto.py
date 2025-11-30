@@ -15,6 +15,7 @@ class QueryRequest(BaseModel):
     """Request model for natural language query."""
     query: str = Field(..., description="Natural language query about the data")
     top_k: Optional[int] = Field(5, ge=1, le=50, description="Number of top results to retrieve")
+    mode: Optional[str] = Field("text", description="Response mode: 'text', 'graph', or 'table'")
 
 
 class QueryResponse(BaseModel):
@@ -23,6 +24,9 @@ class QueryResponse(BaseModel):
     results: Optional[List[Dict[str, Any]]] = Field(None, description="Retrieved data rows")
     sql_query: Optional[str] = Field(None, description="Generated SQL query")
     table_name: Optional[str] = Field(None, description="Name of the table queried")
+    mode: Optional[str] = Field(None, description="Response mode used: 'text', 'graph', or 'table'")
+    visualization_data: Optional[Dict[str, Any]] = Field(None, description="Structured data for graph visualization (graph mode only)")
+    table_data: Optional[Dict[str, Any]] = Field(None, description="Structured table data (table mode only)")
 
 
 class UploadResponse(BaseModel):

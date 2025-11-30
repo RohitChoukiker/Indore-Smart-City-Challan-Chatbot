@@ -9,6 +9,7 @@ import sys
 import os
 import json
 import re
+import decimal
 from datetime import datetime
 from pathlib import Path
 from typing import Optional, Dict, Any, List
@@ -313,33 +314,51 @@ def _get_latest_table_name(db: Session, user_id: str) -> Optional[str]:
 
 def _get_table_schema(db: Session, table_name: str) -> str:
     """
-    Get the schema of a specific table for SQL generation.
+    Get the schema of a specific table for SQL generation with sample data.
     
     Args:
         db: Database session
         table_name: Name of the table
     
     Returns:
-        str: Table schema description
+        str: Table schema description with sample data
     """
     try:
         # Get table columns using SQLAlchemy inspector
         inspector = inspect(engine)
         columns = inspector.get_columns(table_name)
         
-        schema = f"Table: {table_name}\nColumns:\n"
+        schema = f"Table: {table_name}\n\nColumns and Data Types:\n"
         for col in columns:
             col_name = col['name']
             col_type = str(col['type'])
-            schema += f"- {col_name} ({col_type})\n"
+            # Skip internal columns
+            if col_name not in ['id', 'created_at', 'updated_at']:
+                schema += f"- {col_name} ({col_type})\n"
         
-        # Get sample row if available
-        sample_query = f"SELECT * FROM `{table_name}` LIMIT 1"
+        # Get multiple sample rows for better context
+        sample_query = f"SELECT * FROM `{table_name}` LIMIT 3"
         result = db.execute(text(sample_query))
-        sample_row = result.fetchone()
+        sample_rows = result.fetchall()
         
-        if sample_row:
-            schema += f"\nSample row columns: {', '.join(sample_row.keys())}"
+        if sample_rows:
+            schema += f"\nSample Data (showing {len(sample_rows)} rows):\n"
+            for idx, row in enumerate(sample_rows, 1):
+                schema += f"\nRow {idx}:\n"
+                for key, value in row._mapping.items():
+                    # Skip internal columns in sample
+                    if key not in ['id', 'created_at', 'updated_at']:
+                        # Truncate very long values
+                        display_value = str(value)
+                        if len(display_value) > 100:
+                            display_value = display_value[:100] + "..."
+                        schema += f"  {key}: {display_value}\n"
+        
+        # Get statistics about the table
+        count_query = f"SELECT COUNT(*) as total_count FROM `{table_name}`"
+        count_result = db.execute(text(count_query))
+        total_count = count_result.fetchone()[0]
+        schema += f"\nTotal Records: {total_count}\n"
         
         return schema
     except Exception as e:
@@ -404,63 +423,137 @@ def _generate_sql_query(natural_query: str, table_schema: str, table_name: str) 
         if not model:
             raise Exception("No available Gemini model found")
         
-        prompt = f"""You are an expert SQL query generator for MySQL. Convert natural language queries into valid MySQL SELECT statements.
+        prompt = f"""You are an expert SQL query generator specialized in traffic challan and transportation data analysis. Convert natural language queries into precise, optimized MySQL SELECT statements.
 
 TABLE SCHEMA:
 {table_schema}
 
-TABLE NAME: {table_name}
+TABLE NAME: `{table_name}`
 
 USER QUERY: {natural_query}
 
-REQUIREMENTS:
-1. Generate ONLY a valid MySQL SELECT query - no explanations, no markdown, just SQL
-2. Use the exact table name: `{table_name}` (with backticks)
-3. Use exact column names from the schema (with backticks if needed)
-4. Use appropriate WHERE clauses for filtering based on query intent
-5. Use ORDER BY for sorting if query asks for top/best/highest/lowest
-6. Use LIMIT clause for top N results (default to reasonable limit if not specified)
-7. Handle NULL values appropriately with IS NULL or IS NOT NULL
-8. Use proper string matching with LIKE for partial matches
-9. For text searches, use: `column_name` LIKE '%value%'
-10. For exact matches, use: `column_name` = 'value'
+CRITICAL REQUIREMENTS:
+1. Generate ONLY valid MySQL SELECT query - no explanations, no markdown, no code blocks, just pure SQL
+2. Use exact table name: `{table_name}` (with backticks)
+3. Use exact column names from schema (with backticks for safety)
+4. Analyze query intent deeply - understand what the user REALLY wants
+5. Handle complex multi-condition queries with proper AND/OR logic
+6. For traffic challan data, recognize common patterns:
+   - Amount/Challan Amount: numeric values for fines
+   - Location fields: Street Name, Locality Name, City Name
+   - Vehicle fields: Vehicle Name, Vehicle Number, Mode of Transport
+   - Date/Time fields: if present, use for filtering and sorting
 
-MATHEMATICAL & AGGREGATION OPERATIONS:
-- For sums: SELECT SUM(CAST(`column` AS DECIMAL(10,2))) FROM ...
-- For averages: SELECT AVG(CAST(`column` AS DECIMAL(10,2))) FROM ...
-- For counts: SELECT COUNT(*) FROM ... or SELECT COUNT(DISTINCT `column`) FROM ...
-- For maximum: SELECT MAX(CAST(`column` AS DECIMAL(10,2))) FROM ...
-- For minimum: SELECT MIN(CAST(`column` AS DECIMAL(10,2))) FROM ...
-- For grouping: Use GROUP BY `column` with aggregations
-- For calculations: Use arithmetic operators (+, -, *, /) in SELECT
-- For percentages: (COUNT(*) * 100.0 / (SELECT COUNT(*) FROM ...)) AS percentage
-- For comparisons: Use CASE WHEN for conditional logic
-- For date calculations: Use DATE functions (DATEDIFF, DATE_ADD, etc.)
-- For string operations: Use CONCAT, SUBSTRING, LENGTH, etc.
+ADVANCED FILTERING & WHERE CLAUSES:
+- Multiple conditions: Combine with AND/OR logically
+  Example: "challans above 1000 in Indore for cars" → WHERE CAST(`challan_amount` AS DECIMAL(10,2)) > 1000 AND `city_name` LIKE '%Indore%' AND (`vehicle_name` LIKE '%car%' OR `mode_of_transport` LIKE '%car%')
+- Partial matches: Use LIKE '%value%' (case-insensitive pattern matching)
+- Exact matches: Use = 'value' for precise matching
+- Numeric comparisons: Always CAST to DECIMAL for amounts, UNSIGNED for counts
+- Range queries: Use BETWEEN or >= AND <=
+- NULL handling: Use IS NULL or IS NOT NULL
+- Case-insensitive: Use LOWER() or UPPER() if needed: LOWER(`column`) LIKE LOWER('%value%')
 
-COMPLEX QUERY PATTERNS:
-- Multiple conditions: Use AND/OR in WHERE clause
-- Subqueries: Use (SELECT ...) for nested queries
-- Joins: If multiple tables needed (though typically single table)
-- Window functions: Use ROW_NUMBER(), RANK(), etc. if needed
-- Having clause: Use HAVING for filtering aggregated results
+MATHEMATICAL & AGGREGATION OPERATIONS (CRITICAL FOR CHALLAN DATA):
+- Sums: SELECT SUM(CAST(`challan_amount` AS DECIMAL(10,2))) AS total_amount FROM ...
+- Averages: SELECT AVG(CAST(`challan_amount` AS DECIMAL(10,2))) AS avg_amount FROM ...
+- Counts: SELECT COUNT(*) AS total_count FROM ... or COUNT(DISTINCT `column`) for unique values
+- Maximum/Minimum: SELECT MAX(CAST(`challan_amount` AS DECIMAL(10,2))) AS max_amount FROM ...
+- Grouping: Use GROUP BY with aggregations for breakdowns by location, vehicle type, etc.
+- Percentages: (COUNT(*) * 100.0 / (SELECT COUNT(*) FROM `{table_name}`)) AS percentage
+- Ratios: Calculate ratios between different groups
+- Cumulative sums: Use window functions if needed
+- Statistical functions: STDDEV, VARIANCE when applicable
 
-EXAMPLES:
-- "Find records with name John" → SELECT * FROM `{table_name}` WHERE `name` LIKE '%John%'
-- "Get top 10 records" → SELECT * FROM `{table_name}` ORDER BY created_at DESC LIMIT 10
-- "Show all records where status is active" → SELECT * FROM `{table_name}` WHERE `status` = 'active'
-- "What is the total salary?" → SELECT SUM(CAST(`salary` AS DECIMAL(10,2))) AS total_salary FROM `{table_name}`
-- "Average salary by department" → SELECT `department`, AVG(CAST(`salary` AS DECIMAL(10,2))) AS avg_salary FROM `{table_name}` GROUP BY `department`
-- "Count of records where age > 30" → SELECT COUNT(*) AS count FROM `{table_name}` WHERE CAST(`age` AS UNSIGNED) > 30
-- "Show top 5 highest salaries" → SELECT * FROM `{table_name}` ORDER BY CAST(`salary` AS DECIMAL(10,2)) DESC LIMIT 5
-- "Percentage of active records" → SELECT (COUNT(CASE WHEN `status` = 'active' THEN 1 END) * 100.0 / COUNT(*)) AS percentage FROM `{table_name}`
+COMPLEX QUERY PATTERNS FOR TRAFFIC CHALLAN ANALYSIS:
+1. CROSS-QUERIES (Multiple conditions across different dimensions):
+   - "Show challans above 1000 rupees in Indore city for cars" 
+     → WHERE CAST(`challan_amount` AS DECIMAL(10,2)) > 1000 AND `city_name` LIKE '%Indore%' AND (`vehicle_name` LIKE '%car%' OR `mode_of_transport` LIKE '%car%')
+   
+2. AGGREGATION BY MULTIPLE DIMENSIONS:
+   - "Total challan amount by city and vehicle type"
+     → SELECT `city_name`, `vehicle_name`, SUM(CAST(`challan_amount` AS DECIMAL(10,2))) AS total FROM ... GROUP BY `city_name`, `vehicle_name`
+   
+3. TOP-N WITH CONDITIONS:
+   - "Top 10 highest challans in Mumbai"
+     → SELECT * FROM ... WHERE `city_name` LIKE '%Mumbai%' ORDER BY CAST(`challan_amount` AS DECIMAL(10,2)) DESC LIMIT 10
+   
+4. COMPARATIVE ANALYSIS:
+   - "Compare total challans between two cities"
+     → Use GROUP BY with CASE WHEN or UNION
+   
+5. PERCENTAGE & PROPORTION QUERIES:
+   - "What percentage of challans are above 5000?"
+     → SELECT (COUNT(CASE WHEN CAST(`challan_amount` AS DECIMAL(10,2)) > 5000 THEN 1 END) * 100.0 / COUNT(*)) AS percentage FROM ...
+   
+6. TREND ANALYSIS:
+   - "Average challan amount by locality"
+     → SELECT `locality_name`, AVG(CAST(`challan_amount` AS DECIMAL(10,2))) AS avg_amount FROM ... GROUP BY `locality_name` ORDER BY avg_amount DESC
 
-IMPORTANT: Since columns are stored as TEXT, always CAST numeric columns when doing math operations:
-- CAST(`column_name` AS DECIMAL(10,2)) for decimals
-- CAST(`column_name` AS UNSIGNED) for integers
-- CAST(`column_name` AS SIGNED) for signed integers
+SORTING & LIMITING:
+- ORDER BY: Use for sorting (DESC for highest, ASC for lowest)
+- LIMIT: Always include reasonable LIMIT (default 50 if not specified, but respect user's "top N" requests)
+- For "top", "highest", "maximum": ORDER BY ... DESC LIMIT N
+- For "bottom", "lowest", "minimum": ORDER BY ... ASC LIMIT N
 
-Generate the SQL query now:"""
+COLUMN NAME MAPPING (Common traffic challan fields):
+- Amount/Challan Amount: Look for columns with "amount", "challan", "fine", "penalty"
+- Location: "street", "locality", "city", "area", "location"
+- Vehicle: "vehicle", "transport", "mode", "type"
+- Vehicle Number: "number", "registration", "plate"
+
+DATA TYPE HANDLING (CRITICAL):
+Since all columns are stored as TEXT, ALWAYS CAST numeric columns:
+- Amounts/Money: CAST(`column` AS DECIMAL(10,2))
+- Counts/IDs: CAST(`column` AS UNSIGNED) or CAST(`column` AS SIGNED)
+- For comparisons: CAST both sides if comparing numbers
+- For calculations: CAST all numeric operands
+
+EXAMPLES FOR TRAFFIC CHALLAN QUERIES:
+1. "Show all challans above 1000 rupees"
+   → SELECT * FROM `{table_name}` WHERE CAST(`challan_amount` AS DECIMAL(10,2)) > 1000
+
+2. "Total challan amount collected"
+   → SELECT SUM(CAST(`challan_amount` AS DECIMAL(10,2))) AS total_amount FROM `{table_name}`
+
+3. "Average challan amount by city"
+   → SELECT `city_name`, AVG(CAST(`challan_amount` AS DECIMAL(10,2))) AS avg_amount FROM `{table_name}` GROUP BY `city_name` ORDER BY avg_amount DESC
+
+4. "Top 5 highest challans in Indore"
+   → SELECT * FROM `{table_name}` WHERE `city_name` LIKE '%Indore%' ORDER BY CAST(`challan_amount` AS DECIMAL(10,2)) DESC LIMIT 5
+
+5. "Count of challans by vehicle type"
+   → SELECT `vehicle_name`, COUNT(*) AS count FROM `{table_name}` GROUP BY `vehicle_name` ORDER BY count DESC
+
+6. "Challans between 500 and 2000 rupees for cars in Mumbai"
+   → SELECT * FROM `{table_name}` WHERE CAST(`challan_amount` AS DECIMAL(10,2)) BETWEEN 500 AND 2000 AND (`vehicle_name` LIKE '%car%' OR `mode_of_transport` LIKE '%car%') AND `city_name` LIKE '%Mumbai%'
+
+7. "What percentage of challans are above 5000?"
+   → SELECT (COUNT(CASE WHEN CAST(`challan_amount` AS DECIMAL(10,2)) > 5000 THEN 1 END) * 100.0 / COUNT(*)) AS percentage FROM `{table_name}`
+
+8. "Total amount collected by each locality"
+   → SELECT `locality_name`, SUM(CAST(`challan_amount` AS DECIMAL(10,2))) AS total_amount FROM `{table_name}` GROUP BY `locality_name` ORDER BY total_amount DESC
+
+9. "Compare total challans between Indore and Mumbai"
+   → SELECT `city_name`, COUNT(*) AS total_count, SUM(CAST(`challan_amount` AS DECIMAL(10,2))) AS total_amount FROM `{table_name}` WHERE `city_name` LIKE '%Indore%' OR `city_name` LIKE '%Mumbai%' GROUP BY `city_name`
+
+10. "Show challans for specific vehicle number"
+    → SELECT * FROM `{table_name}` WHERE `vehicle_number` LIKE '%ABC123%'
+
+QUERY GENERATION RULES:
+- If query asks for specific values, include them in SELECT
+- If query asks for aggregations, use appropriate aggregation functions
+- If query asks for comparisons, structure query to enable comparison
+- If query has multiple conditions, combine them logically with AND/OR
+- Always consider the full context of the query, not just keywords
+- For "show me", "list", "display": Use SELECT * or specific columns
+- For "how many", "count": Use COUNT(*)
+- For "total", "sum": Use SUM()
+- For "average", "mean": Use AVG()
+- For "highest", "maximum", "top": Use MAX() or ORDER BY DESC
+- For "lowest", "minimum", "bottom": Use MIN() or ORDER BY ASC
+
+Generate the SQL query now (ONLY SQL, no explanations):"""
         
         response = model.generate_content(prompt)
         
@@ -497,16 +590,28 @@ def _execute_sql_query(db: Session, sql_query: str, top_k: int = 5) -> List[Dict
     Args:
         db: Database session
         sql_query: SQL query to execute
-        top_k: Maximum number of results
+        top_k: Maximum number of results (for non-aggregation queries)
     
     Returns:
         List[Dict]: Query results
     """
     try:
-        # Add LIMIT if not present and query doesn't have it
         sql_lower = sql_query.lower().strip()
-        if 'limit' not in sql_lower:
-            sql_query = f"{sql_query.rstrip(';')} LIMIT {top_k}"
+        
+        # Check if query is an aggregation query (SUM, AVG, COUNT, MAX, MIN, GROUP BY)
+        is_aggregation = any(keyword in sql_lower for keyword in [
+            'sum(', 'avg(', 'count(', 'max(', 'min(', 
+            'group by', 'having', 'percentage'
+        ])
+        
+        # For aggregation queries, don't add LIMIT if not present (we want all aggregated results)
+        # For regular SELECT queries, add LIMIT if not present
+        if not is_aggregation and 'limit' not in sql_lower:
+            # Increase limit for complex queries that might need more context
+            sql_query = f"{sql_query.rstrip(';')} LIMIT {top_k * 2}"
+        elif is_aggregation and 'limit' not in sql_lower:
+            # For aggregations, allow more results for comprehensive analysis
+            sql_query = f"{sql_query.rstrip(';')} LIMIT 100"
         
         # Execute query
         result = db.execute(text(sql_query))
@@ -522,14 +627,301 @@ def _execute_sql_query(db: Session, sql_query: str, top_k: int = 5) -> List[Dict
                     row_dict[key] = value.isoformat()
                 elif hasattr(value, '__dict__'):
                     row_dict[key] = str(value)
+                elif isinstance(value, (int, float)) and value is not None:
+                    # Preserve numeric types for better analysis
+                    row_dict[key] = float(value) if isinstance(value, (float, decimal.Decimal)) else int(value)
                 else:
                     row_dict[key] = value
             results.append(row_dict)
         
-        return results[:top_k]
+        # For non-aggregation queries, limit to top_k
+        # For aggregation queries, return all results (they're already limited by SQL LIMIT)
+        if not is_aggregation:
+            return results[:top_k]
+        return results
     except Exception as e:
         print(f"Error executing SQL: {str(e)}")
+        print(f"SQL Query: {sql_query}")
         return []
+
+
+def _generate_visualization_data(results: List[Dict[str, Any]], query: str, sql_query: str) -> Optional[Dict[str, Any]]:
+    """
+    Generate structured data for graph visualization.
+    
+    Args:
+        results: Query results
+        query: Original query
+        sql_query: Generated SQL query
+    
+    Returns:
+        dict: Visualization data with chart type, labels, values, etc.
+    """
+    if not results:
+        return None
+    
+    try:
+        sql_lower = sql_query.lower()
+        results_lower = query.lower()
+        
+        # Detect chart type based on query and SQL
+        chart_type = "bar_chart"  # default
+        
+        # Check for GROUP BY (categorical breakdown)
+        if "group by" in sql_lower:
+            # Extract category column and value column
+            first_row = results[0]
+            keys = list(first_row.keys())
+            
+            print(f"[DEBUG] GROUP BY detected. Keys: {keys}")
+            print(f"[DEBUG] First row sample: {first_row}")
+            
+            # Typically: category column, then aggregated value
+            if len(keys) >= 2:
+                category_key = keys[0]
+                value_key = keys[1] if len(keys) > 1 else keys[0]
+                
+                print(f"[DEBUG] Using category_key={category_key}, value_key={value_key}")
+                
+                # Helper function to get value with case-insensitive and space-tolerant matching
+                def get_row_value(row, key):
+                    # Try exact match first
+                    if key in row:
+                        return row[key]
+                    # Try case-insensitive match
+                    for k, v in row.items():
+                        if k.lower() == key.lower():
+                            return v
+                    # Try key with spaces/underscores normalized
+                    key_normalized = key.replace(' ', '_').replace('-', '_').lower()
+                    for k, v in row.items():
+                        k_normalized = k.replace(' ', '_').replace('-', '_').lower()
+                        if k_normalized == key_normalized:
+                            return v
+                    return None
+                
+                # Extract labels and values
+                labels = []
+                values = []
+                
+                for idx, row in enumerate(results):
+                    # Always append label (even if None/empty)
+                    label_val = get_row_value(row, category_key)
+                    if label_val is None:
+                        label_val = row.get(category_key, '')  # Fallback to direct access
+                    labels.append(str(label_val) if label_val is not None else '')
+                    
+                    # Always append value (convert to number)
+                    val = get_row_value(row, value_key)
+                    if val is None:
+                        val = row.get(value_key, 0)  # Fallback to direct access
+                    
+                    # Debug the value
+                    print(f"[DEBUG] Row {idx}: {category_key}={label_val}, {value_key}={val} (type={type(val).__name__})")
+                    
+                    # Handle different numeric types including Decimal
+                    numeric_val = 0
+                    if val is None:
+                        numeric_val = 0
+                    elif isinstance(val, (int, float)):
+                        numeric_val = float(val)
+                    elif hasattr(val, '__float__'):  # Handles Decimal, numpy types, etc.
+                        try:
+                            numeric_val = float(val)
+                        except:
+                            numeric_val = 0
+                    elif isinstance(val, str):
+                        try:
+                            # Remove currency symbols, commas, spaces
+                            cleaned = val.replace(',', '').replace('₹', '').replace('$', '').replace(' ', '').strip()
+                            numeric_val = float(cleaned) if cleaned else 0
+                        except Exception as e:
+                            print(f"[DEBUG] Failed to parse string value '{val}': {e}")
+                            numeric_val = 0
+                    else:
+                        print(f"[DEBUG] Unknown value type: {type(val)} for value: {val}")
+                        numeric_val = 0
+                    
+                    values.append(numeric_val)
+                    print(f"[DEBUG] Row {idx} final numeric value: {numeric_val}")
+                
+                # Ensure labels and values have same length
+                if len(labels) != len(values):
+                    print(f"[WARNING] Mismatch: {len(labels)} labels vs {len(values)} values")
+                    min_len = min(len(labels), len(values))
+                    labels = labels[:min_len]
+                    values = values[:min_len]
+                
+                print(f"[DEBUG] Final values array: {values}")
+                print(f"[DEBUG] Max value: {max(values) if values else 'N/A'}, Min value: {min(values) if values else 'N/A'}")
+                
+                # If all values are zero, try to find numeric column automatically
+                if all(v == 0 for v in values) and len(results) > 0:
+                    print(f"[DEBUG] All values are zero, trying to find numeric column automatically...")
+                    # Try to find a column with numeric values
+                    for test_key in keys:
+                        if test_key == category_key:
+                            continue
+                        test_values = []
+                        for row in results:
+                            test_val = row.get(test_key, 0)
+                            if isinstance(test_val, (int, float)) or (hasattr(test_val, '__float__')):
+                                try:
+                                    test_values.append(float(test_val))
+                                except:
+                                    pass
+                        if test_values and any(v > 0 for v in test_values):
+                            print(f"[DEBUG] Found numeric column: {test_key} with values: {test_values[:3]}")
+                            value_key = test_key
+                            # Re-extract values with new key
+                            values = []
+                            for row in results:
+                                val = row.get(value_key, 0)
+                                if isinstance(val, (int, float)):
+                                    values.append(float(val))
+                                elif hasattr(val, '__float__'):
+                                    try:
+                                        values.append(float(val))
+                                    except:
+                                        values.append(0)
+                                elif isinstance(val, str):
+                                    try:
+                                        cleaned = val.replace(',', '').replace('₹', '').replace('$', '').strip()
+                                        values.append(float(cleaned) if cleaned else 0)
+                                    except:
+                                        values.append(0)
+                                else:
+                                    values.append(0)
+                            print(f"[DEBUG] Re-extracted values: {values}")
+                            break
+                
+                # Determine chart type
+                if "percentage" in sql_lower or "%" in results_lower:
+                    chart_type = "pie_chart"
+                elif "time" in category_key.lower() or "date" in category_key.lower():
+                    chart_type = "line_chart"
+                else:
+                    chart_type = "bar_chart"
+                
+                # Validate data before returning
+                if len(labels) > 0 and len(values) > 0 and any(v > 0 for v in values):
+                    print(f"[DEBUG] Generated chart data: type={chart_type}, labels={len(labels)}, values={len(values)}, sample={values[:3]}")
+                    return {
+                        "chart_type": chart_type,
+                        "labels": labels,
+                        "values": values,
+                        "category_label": category_key.replace('_', ' ').title(),
+                        "value_label": value_key.replace('_', ' ').title(),
+                        "title": query[:100]  # Truncate long queries
+                    }
+                else:
+                    print(f"[WARNING] Invalid chart data: labels={len(labels)}, values={len(values)}, all_zero={all(v == 0 for v in values) if values else True}")
+                    print(f"[DEBUG] Values breakdown: {[(i, v) for i, v in enumerate(values)]}")
+                    print(f"[DEBUG] Sample row data: {results[0] if results else 'No results'}")
+                    return None
+        
+        # Check for time-series or single value queries
+        elif any(keyword in sql_lower for keyword in ['sum(', 'avg(', 'count(', 'max(', 'min(']):
+            # Single aggregated value
+            first_row = results[0]
+            keys = list(first_row.keys())
+            
+            if keys:
+                value_key = keys[0]
+                value = first_row.get(value_key, 0)
+                
+                # Convert to number
+                if isinstance(value, (int, float)):
+                    numeric_value = float(value)
+                elif isinstance(value, str):
+                    try:
+                        numeric_value = float(value.replace(',', '').replace('₹', '').strip())
+                    except:
+                        numeric_value = 0
+                else:
+                    numeric_value = 0
+                
+                return {
+                    "chart_type": "single_value",
+                    "value": numeric_value,
+                    "label": value_key.replace('_', ' ').title(),
+                    "title": query[:100]
+                }
+        
+        # Default: use first two columns as labels and values
+        if len(results) > 0:
+            first_row = results[0]
+            keys = list(first_row.keys())
+            
+            if len(keys) >= 2:
+                labels = [str(row.get(keys[0], '')) for row in results]
+                values = []
+                for row in results:
+                    val = row.get(keys[1], 0)
+                    if isinstance(val, (int, float)):
+                        values.append(float(val))
+                    elif isinstance(val, str):
+                        try:
+                            values.append(float(val.replace(',', '').replace('₹', '').strip()))
+                        except:
+                            values.append(0)
+                    else:
+                        values.append(0)
+                
+                return {
+                    "chart_type": "bar_chart",
+                    "labels": labels,
+                    "values": values,
+                    "category_label": keys[0].replace('_', ' ').title(),
+                    "value_label": keys[1].replace('_', ' ').title(),
+                    "title": query[:100]
+                }
+        
+        return None
+    except Exception as e:
+        print(f"Error generating visualization data: {str(e)}")
+        return None
+
+
+def _generate_table_data(results: List[Dict[str, Any]]) -> Optional[Dict[str, Any]]:
+    """
+    Generate structured table data for HTML table rendering.
+    
+    Args:
+        results: Query results
+    
+    Returns:
+        dict: Table data with headers and rows
+    """
+    if not results:
+        return None
+    
+    try:
+        # Extract headers from first row
+        first_row = results[0]
+        headers = list(first_row.keys())
+        
+        # Extract rows
+        rows = []
+        for row in results:
+            row_data = []
+            for header in headers:
+                value = row.get(header, '')
+                # Convert to string, handle None
+                if value is None:
+                    row_data.append('')
+                else:
+                    row_data.append(str(value))
+            rows.append(row_data)
+        
+        return {
+            "headers": headers,
+            "rows": rows,
+            "row_count": len(rows)
+        }
+    except Exception as e:
+        print(f"Error generating table data: {str(e)}")
+        return None
 
 
 def _perform_calculations(results: List[Dict[str, Any]], query: str) -> Optional[Dict[str, Any]]:
@@ -571,7 +963,7 @@ def _perform_calculations(results: List[Dict[str, Any]], query: str) -> Optional
     return calculations if calculations else None
 
 
-def _generate_natural_answer(query: str, results: List[Dict[str, Any]], table_schema: str) -> str:
+def _generate_natural_answer(query: str, results: List[Dict[str, Any]], table_schema: str, mode: str = "text") -> str:
     """
     Use Gemini to generate natural language answer from query results.
     
@@ -579,6 +971,7 @@ def _generate_natural_answer(query: str, results: List[Dict[str, Any]], table_sc
         query: Original natural language query
         results: Retrieved data rows
         table_schema: Table schema description
+        mode: Response mode - "text", "graph", or "table"
     
     Returns:
         str: Natural language answer
@@ -638,14 +1031,34 @@ def _generate_natural_answer(query: str, results: List[Dict[str, Any]], table_sc
         if calculations:
             calculations_info = f"\n\nCalculated/Aggregated Values: {json.dumps(calculations, indent=2, default=str)}"
         
-        prompt = f"""You are a table-aware assistant specialized in analyzing structured Excel data and performing complex calculations.
+        # Adjust prompt based on mode
+        if mode == "table":
+            # For table mode, generate a very brief summary (1-2 sentences max)
+            prompt = f"""You are a data analyst. Generate a VERY BRIEF summary (1-2 sentences maximum) for the query results that will be displayed in a table format.
+
+IMPORTANT: 
+- Keep the response SHORT and CONCISE (maximum 2 sentences)
+- Just state what data is being shown, don't list all details
+- The detailed data will be shown in the table below
+- Example: "Found {len(results)} records matching your query." or "Showing {len(results)} challans above ₹1,000 in Indore."
+
+USER QUERY: {query}
+NUMBER OF RESULTS: {len(results)}
+
+RETRIEVED DATA ROWS ({len(results)} rows):
+{results_str[:500]}... (data will be shown in table)
+
+Generate ONLY a brief 1-2 sentence summary:"""
+        else:
+            # For text and graph modes, use the comprehensive prompt
+            prompt = f"""You are an expert data analyst specialized in traffic challan and transportation data. You analyze structured data from Excel files and provide comprehensive, accurate answers to complex queries.
 
 CONTEXT:
-- You are analyzing data retrieved from a database query
-- Each row represents a record from an uploaded Excel file
-- The data is stored exactly as it appeared in the Excel file
-- You must answer based ONLY on the provided data rows
-- You can perform mathematical operations and calculations on the data
+- You are analyzing traffic challan data retrieved from a database query
+- Each row represents a traffic challan record with details like amount, location, vehicle information
+- The data is stored exactly as it appeared in the uploaded Excel file
+- You must answer based ONLY on the provided data rows - no external assumptions
+- You can perform complex mathematical operations, aggregations, and cross-dimensional analysis
 
 TABLE STRUCTURE:
 {table_schema}
@@ -658,48 +1071,161 @@ RETRIEVED DATA ROWS ({len(results)} rows):
 {results_str}
 {calculations_info}
 
+DOMAIN KNOWLEDGE - TRAFFIC CHALLAN DATA:
+- Challan Amount: The fine/penalty amount (numeric, typically in rupees)
+- Location Fields: Street Name, Locality Name, City Name (hierarchical location data)
+- Vehicle Information: Vehicle Name, Vehicle Number, Mode of Transport
+- Common patterns: High-value challans, location-based analysis, vehicle type breakdowns
+
 STRICT RULES:
-1. Understand the table structure - identify what each column represents
-2. Identify relevant rows based on the user query - match query intent to data fields
-3. Answer STRICTLY from the retrieved rows only - no external knowledge
-4. If the answer is not present in any row, explicitly state "Not found in dataset"
+1. Understand the table structure deeply - identify what each column represents in the traffic challan context
+2. Match query intent precisely to data fields - understand what the user REALLY wants
+3. Answer STRICTLY from retrieved rows only - never use external knowledge or assumptions
+4. If answer is not in data, explicitly state "Not found in the dataset" or "No records match the criteria"
 5. NEVER hallucinate, guess, or infer beyond what is in the table data
-6. If query asks for specific values, extract them exactly as they appear
-7. If query asks for counts/summaries, calculate from the provided rows
-8. If multiple rows match, provide a clear summary or list
-9. Use natural, conversational language in your response
-10. Present data clearly and accurately
+6. Extract values exactly as they appear in the data
+7. For counts/summaries, use the provided aggregated values or calculate from rows
+8. For multiple rows, provide clear, organized summaries
+9. Use natural, conversational, professional language
+10. Present data clearly with proper formatting (currency, percentages, numbers)
 
-MATHEMATICAL & COMPLEX QUERIES:
-- For aggregations (SUM, AVG, COUNT, MAX, MIN): The SQL query already calculated these, present the results clearly
-- For calculations: Perform arithmetic operations on numeric values from the data
-- For percentages: Calculate percentages when requested (e.g., "What percentage of X is Y?")
-- For comparisons: Compare values and explain differences
-- For trends: Identify patterns, increases, decreases, or trends in the data
-- For statistics: Provide statistical insights (mean, median, range, etc.) when applicable
-- For conditional logic: Apply IF-THEN logic when analyzing data
-- For date calculations: Calculate date differences, durations, or date-based comparisons
-- For ratios and proportions: Calculate ratios, proportions, or relative values
-- For rankings: Identify top/bottom items, order by criteria
+ADVANCED MATHEMATICAL & COMPLEX QUERY HANDLING:
 
-RESPONSE FORMAT:
-- Start with a direct answer to the query
-- If it's a mathematical query, show the calculation or result clearly
-- If applicable, mention how many rows matched or were analyzed
-- Provide specific values, numbers, or details from the data
-- For aggregations, clearly state the aggregated value
-- For comparisons, explain the differences
-- Be concise but complete
-- Use appropriate units or formatting for numbers (e.g., currency, percentages)
+1. AGGREGATIONS (Already calculated by SQL):
+   - SUM: Present as "The total challan amount is ₹X" or "Total collected: ₹X"
+   - AVG: Present as "The average challan amount is ₹X" or "Average fine: ₹X"
+   - COUNT: Present as "There are X challans" or "X records found"
+   - MAX/MIN: Present as "The highest challan is ₹X" or "The lowest challan is ₹X"
+   - GROUP BY results: Present breakdown clearly by dimension (city, vehicle type, etc.)
 
-EXAMPLES OF GOOD RESPONSES:
-- "The total salary is $150,000" (for SUM queries)
-- "The average age is 35.5 years" (for AVG queries)
-- "There are 25 active records out of 100 total (25%)" (for COUNT and percentage)
-- "Department A has the highest average salary at $75,000, followed by Department B at $65,000" (for GROUP BY with comparisons)
-- "The salary increased by 15% from the previous period" (for trend analysis)
+2. PERCENTAGES & PROPORTIONS:
+   - Calculate and present clearly: "X% of challans are above ₹5000" or "X out of Y (Z%)"
+   - For comparisons: "City A has X% more challans than City B"
+   - Show both absolute and percentage values when relevant
 
-Answer:"""
+3. COMPARISONS & CROSS-ANALYSIS:
+   - Compare values across different dimensions (cities, vehicle types, localities)
+   - Highlight differences: "Indore has ₹X more in total challans than Mumbai"
+   - Rank and order: "Top 3 cities by challan amount: 1) City A (₹X), 2) City B (₹Y), 3) City C (₹Z)"
+   - Relative comparisons: "X is Y% higher/lower than Z"
+
+4. COMPLEX MULTI-DIMENSIONAL QUERIES:
+   - Handle queries spanning multiple dimensions (location + vehicle + amount)
+   - Break down results by each relevant dimension
+   - Provide insights across dimensions: "In Indore, cars account for X% of total challans"
+
+5. STATISTICAL ANALYSIS:
+   - Mean, median, range when applicable
+   - Distribution insights: "Most challans (X%) fall in the ₹Y-₹Z range"
+   - Outliers: "The highest challan of ₹X is significantly above the average of ₹Y"
+
+6. TREND & PATTERN IDENTIFICATION:
+   - Identify patterns in the data: "Most challans are concentrated in [location]"
+   - Vehicle type distribution: "Cars account for X% of all challans"
+   - Amount distribution: "X% of challans are below ₹Y, Y% are above ₹Z"
+
+7. CONDITIONAL & FILTERED ANALYSIS:
+   - Handle queries with multiple conditions: "Challans above ₹X in City Y for Vehicle Type Z"
+   - Present filtered results clearly with context
+   - Explain what filters were applied
+
+RESPONSE FORMAT GUIDELINES:
+
+1. START WITH DIRECT ANSWER:
+   - Answer the query directly in the first sentence
+   - Example: "The total challan amount collected is ₹1,250,000"
+
+2. PROVIDE CONTEXT & DETAILS:
+   - Mention how many records were analyzed
+   - Provide specific values, numbers, locations, vehicle types
+   - Include relevant breakdowns if query implies multi-dimensional analysis
+
+3. FORMAT NUMBERS PROPERLY:
+   - Currency: Use ₹ symbol, format with commas (₹1,25,000)
+   - Percentages: Show as "X%" or "X out of Y (Z%)"
+   - Counts: Use clear numbers (1,234 challans)
+   - Decimals: Round appropriately (₹1,234.56 or ₹1,235)
+
+4. STRUCTURE COMPLEX ANSWERS:
+   - Use bullet points or numbered lists for multiple items
+   - Group related information together
+   - Use clear headings or separators for different dimensions
+
+5. BE COMPREHENSIVE BUT CONCISE:
+   - Answer the query completely
+   - Include relevant insights that add value
+   - Don't be verbose - be precise and informative
+
+EXAMPLES OF EXCELLENT RESPONSES FOR TRAFFIC CHALLAN QUERIES:
+
+1. Query: "What is the total challan amount?"
+   Response: "The total challan amount collected is ₹12,50,000 across all records."
+
+2. Query: "Show me challans above 1000 rupees in Indore"
+   Response: "There are 45 challans above ₹1,000 in Indore. The total amount for these challans is ₹1,25,000. The highest challan in this category is ₹5,000 for vehicle number ABC-1234."
+
+3. Query: "Average challan amount by city"
+   Response: "Average challan amounts by city:
+   - Indore: ₹2,500 (based on 120 challans)
+   - Mumbai: ₹3,200 (based on 95 challans)
+   - Delhi: ₹2,800 (based on 110 challans)
+   
+   Mumbai has the highest average challan amount, which is 28% higher than Indore."
+
+4. Query: "Top 5 highest challans"
+   Response: "The top 5 highest challans are:
+   1. ₹10,000 - Vehicle: Car (ABC-1234), Location: Indore, MG Road
+   2. ₹8,500 - Vehicle: Bike (XYZ-5678), Location: Mumbai, Marine Drive
+   3. ₹7,200 - Vehicle: Car (DEF-9012), Location: Delhi, Connaught Place
+   4. ₹6,800 - Vehicle: Truck (GHI-3456), Location: Indore, Ring Road
+   5. ₹6,500 - Vehicle: Car (JKL-7890), Location: Mumbai, Bandra"
+
+5. Query: "What percentage of challans are above 5000?"
+   Response: "Out of 500 total challans, 75 challans are above ₹5,000, which represents 15% of all challans. The remaining 85% (425 challans) are ₹5,000 or below."
+
+6. Query: "Compare total challans between Indore and Mumbai"
+   Response: "Comparison of challans between Indore and Mumbai:
+   - Indore: 120 challans, Total amount: ₹3,00,000, Average: ₹2,500
+   - Mumbai: 95 challans, Total amount: ₹3,04,000, Average: ₹3,200
+   
+   While Mumbai has 25 fewer challans, it has ₹4,000 more in total amount. Mumbai's average challan is 28% higher than Indore's."
+
+7. Query: "Challans for cars in Indore above 2000 rupees"
+   Response: "There are 18 challans for cars in Indore above ₹2,000. The total amount is ₹65,000, with an average of ₹3,611 per challan. The highest challan in this category is ₹8,000 for vehicle number ABC-1234 on MG Road."
+
+8. Query: "Total amount collected by each locality"
+   Response: "Total challan amounts collected by locality:
+   - MG Road: ₹1,25,000 (50 challans)
+   - Ring Road: ₹95,000 (38 challans)
+   - Vijay Nagar: ₹80,000 (32 challans)
+   - Palasia: ₹65,000 (26 challans)
+   
+   MG Road has the highest collection, accounting for 34% of the total."
+
+9. Query: "Count of challans by vehicle type"
+   Response: "Breakdown of challans by vehicle type:
+   - Cars: 180 challans (45% of total)
+   - Bikes: 150 challans (37.5% of total)
+   - Trucks: 50 challans (12.5% of total)
+   - Buses: 20 challans (5% of total)
+   
+   Cars account for the highest number of challans, followed by bikes."
+
+10. Query: "Show me all challans above 1000 rupees in Indore city for cars"
+    Response: "Found 25 challans above ₹1,000 for cars in Indore. The total amount is ₹85,000. Here are the details:
+    - Highest: ₹5,000 (Vehicle: ABC-1234, Location: MG Road)
+    - Lowest: ₹1,200 (Vehicle: XYZ-5678, Location: Ring Road)
+    - Average: ₹3,400 per challan
+    - Most common locality: MG Road (8 challans)"
+
+CRITICAL: 
+- Always base your answer on the actual data provided
+- If the query asks for something not in the data, say so clearly
+- Be precise with numbers and calculations
+- Provide context and insights that help the user understand the data
+- Use professional, clear language suitable for traffic challan analysis
+
+Now provide a comprehensive, accurate answer to the user's query:"""
         
         response = model.generate_content(prompt)
         answer = response.text.strip()
@@ -709,13 +1235,15 @@ Answer:"""
         return f"Error generating answer: {str(e)}"
 
 
-def query_service(query: str, top_k: int = 5, user_id: str = None) -> dict:
+def query_service(query: str, top_k: int = 5, user_id: str = None, mode: str = "text") -> dict:
     """
     Process natural language query using RAG system.
     
     Args:
         query: Natural language query
         top_k: Number of top results to retrieve
+        user_id: User ID for data isolation
+        mode: Response mode - "text", "graph", or "table"
     
     Returns:
         dict: Standardized response with answer and results
@@ -768,18 +1296,36 @@ def query_service(query: str, top_k: int = 5, user_id: str = None) -> dict:
         # Execute SQL query
         results = _execute_sql_query(db, sql_query, top_k)
         
-        # Generate natural language answer
-        answer = _generate_natural_answer(query, results, table_schema)
+        # Generate natural language answer (mode-specific: brief for table, comprehensive for text/graph)
+        answer = _generate_natural_answer(query, results, table_schema, mode)
+        
+        # Prepare response data
+        response_data = {
+            "answer": answer,
+            "results": results if results else None,
+            "sql_query": sql_query,
+            "table_name": table_name,
+            "mode": mode
+        }
+        
+        # Add mode-specific data
+        if mode == "graph":
+            visualization_data = _generate_visualization_data(results, query, sql_query)
+            if visualization_data:
+                response_data["visualization_data"] = visualization_data
+        
+        elif mode == "table":
+            table_data = _generate_table_data(results)
+            if table_data:
+                response_data["table_data"] = table_data
+        
+        # For text mode, keep answer concise (already generated above)
+        # For graph/table modes, we still include answer as summary
         
         return {
             "status": True,
             "message": "Query processed successfully",
-            "data": {
-                "answer": answer,
-                "results": results if results else None,
-                "sql_query": sql_query,
-                "table_name": table_name
-            }
+            "data": response_data
         }
     except Exception as e:
         return {

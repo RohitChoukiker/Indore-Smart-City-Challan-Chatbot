@@ -77,6 +77,17 @@ def query_agent(req: QueryRequest, user_id: str = Depends(_user_id_dep)):
     Requires valid JWT Bearer token in Authorization header.
     Uses RAG system to understand query, generate SQL, execute it,
     and return natural language answer with results.
+    
+    Modes:
+    - "text": Returns text-based answer (default)
+    - "graph": Returns structured data for graph visualization
+    - "table": Returns structured table data for HTML table rendering
     """
-    return query_service(req.query, req.top_k, user_id)
+    # Validate mode
+    valid_modes = ["text", "graph", "table"]
+    mode = req.mode.lower() if req.mode else "text"
+    if mode not in valid_modes:
+        mode = "text"
+    
+    return query_service(req.query, req.top_k, user_id, mode)
 
