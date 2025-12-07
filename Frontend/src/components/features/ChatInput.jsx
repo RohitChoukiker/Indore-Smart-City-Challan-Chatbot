@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { FaPlus, FaMicrophone, FaPaperPlane, FaCheckCircle, FaFileExcel } from 'react-icons/fa';
+import { FaPlus, FaMicrophone, FaPaperPlane, FaCheckCircle, FaFileExcel, FaTrash, FaCheck } from 'react-icons/fa';
 import { IoMdPulse } from 'react-icons/io';
 import { agentAPI } from '../../services/api';
 import useClickOutside from '../../hooks/useClickOutside';
@@ -14,6 +14,9 @@ const ChatInput = ({ onMessageSent, onQueryLoading }) => {
     const [uploadedFiles, setUploadedFiles] = useState([]);
     const [uploadingFile, setUploadingFile] = useState(null);
     const [uploadProgress, setUploadProgress] = useState(0);
+    const [selectedFileId, setSelectedFileId] = useState(null);
+    const [loadingFiles, setLoadingFiles] = useState(false);
+    const [deletingFileId, setDeletingFileId] = useState(null);
     const fileInputRef = useRef(null);
 
     const uploadMenuRef = useRef(null);
@@ -22,24 +25,30 @@ const ChatInput = ({ onMessageSent, onQueryLoading }) => {
     useClickOutside(uploadMenuRef, () => setShowUploadMenu(false));
     useClickOutside(modeMenuRef, () => setShowModeMenu(false));
 
-    // Load uploaded files from localStorage on mount
+    // Fetch files from API on mount
     useEffect(() => {
-        const savedFiles = localStorage.getItem('uploadedFiles');
-        if (savedFiles) {
-            try {
-                setUploadedFiles(JSON.parse(savedFiles));
-            } catch (e) {
-                console.error('Error loading uploaded files:', e);
-            }
-        }
+        fetchFiles();
     }, []);
 
-    // Save uploaded files to localStorage whenever it changes
-    useEffect(() => {
-        if (uploadedFiles.length > 0) {
-            localStorage.setItem('uploadedFiles', JSON.stringify(uploadedFiles));
+    // Fetch files from API
+    const fetchFiles = async () => {
+        setLoadingFiles(true);
+        try {
+            const response = await agentAPI.listFiles();
+            if (response.status && response.data) {
+                const files = response.data.files || [];
+                setUploadedFiles(files);
+                // Auto-select the first file (most recent) if none selected
+                if (files.length > 0 && !selectedFileId) {
+                    setSelectedFileId(files[0].id);
+                }
+            }
+        } catch (error) {
+            console.error('Error fetching files:', error);
+        } finally {
+            setLoadingFiles(false);
         }
-    }, [uploadedFiles]);
+    };
 
     const handleFileUpload = async (e) => {
         console.log('File input changed:', e.target.files);
@@ -99,18 +108,9 @@ const ChatInput = ({ onMessageSent, onQueryLoading }) => {
             setUploadProgress(100);
 
             if (response && response.status) {
-                // Add to uploaded files list
-                const newFile = {
-                    id: Date.now(),
-                    name: file.name,
-                    tableName: response.data.table_name,
-                    rowsStored: response.data.rows_stored,
-                    uploadedAt: new Date().toISOString(),
-                    status: 'success',
-                };
-
-                setUploadedFiles((prev) => [newFile, ...prev]);
-
+                // Refresh files list from API
+                await fetchFiles();
+                
                 // Show success message briefly
                 setTimeout(() => {
                     setUploadingFile(null);
@@ -194,6 +194,10 @@ const ChatInput = ({ onMessageSent, onQueryLoading }) => {
             // Extract mode from selectedMode (e.g., "Text Mode" -> "text")
             const mode = selectedMode.toLowerCase().replace(' mode', '');
             
+            // Get selected file's table_name
+            const selectedFile = uploadedFiles.find(f => f.id === selectedFileId);
+            const tableName = selectedFile ? selectedFile.table_name : null;
+            
             // Set loading state
             if (onQueryLoading) {
                 onQueryLoading(true);
@@ -203,8 +207,8 @@ const ChatInput = ({ onMessageSent, onQueryLoading }) => {
             setInput('');
             
             try {
-                // Call query API with mode
-                const response = await agentAPI.query(queryText, 5, mode);
+                // Call query API with mode and table_name
+                const response = await agentAPI.query(queryText, 5, mode, tableName);
                 
                 // Handle response
                 if (response.status) {
@@ -263,6 +267,39 @@ const ChatInput = ({ onMessageSent, onQueryLoading }) => {
         return date.toLocaleDateString() + ' ' + date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
     };
 
+    const handleFileSelect = (fileId) => {
+        setSelectedFileId(fileId);
+        setShowUploadMenu(false);
+    };
+
+    const handleFileDelete = async (fileId, e) => {
+        e.stopPropagation(); // Prevent file selection when clicking delete
+        
+        if (!window.confirm('Are you sure you want to delete this file? This will also delete all its data from the database.')) {
+            return;
+        }
+
+        setDeletingFileId(fileId);
+        try {
+            const response = await agentAPI.deleteFile(fileId);
+            if (response.status) {
+                // Refresh files list
+                await fetchFiles();
+                // Clear selection if deleted file was selected
+                if (selectedFileId === fileId) {
+                    setSelectedFileId(null);
+                }
+            } else {
+                alert(response.message || 'Failed to delete file');
+            }
+        } catch (error) {
+            console.error('Error deleting file:', error);
+            alert(error.message || 'Failed to delete file. Please try again.');
+        } finally {
+            setDeletingFileId(null);
+        }
+    };
+
     return (
         <div className="chat-input-container">
             <div className="relative-container" ref={uploadMenuRef}>
@@ -274,27 +311,66 @@ const ChatInput = ({ onMessageSent, onQueryLoading }) => {
                         <button onClick={triggerFileUpload} className="upload-btn">
                             <FaFileExcel /> Upload Excel/CSV
                         </button>
-                        {uploadedFiles.length > 0 && (
+                        {loadingFiles ? (
+                            <div className="loading-files">
+                                <span className="loading-spinner"></span>
+                                Loading files...
+                            </div>
+                        ) : uploadedFiles.length > 0 ? (
                             <div className="uploaded-files-section">
-                                <div className="uploaded-files-header">Uploaded Files ({uploadedFiles.length})</div>
+                                <div className="uploaded-files-header">
+                                    Uploaded Files ({uploadedFiles.length})
+                                    {selectedFileId && (
+                                        <span className="selected-indicator">• Active</span>
+                                    )}
+                                </div>
                                 <div className="uploaded-files-list">
-                                    {uploadedFiles.map((file) => (
-                                        <div key={file.id} className="uploaded-file-item">
-                                            <FaFileExcel className="file-icon" />
-                                            <div className="file-info">
-                                                <div className="file-name">{file.name}</div>
-                                                <div className="file-meta">
-                                                    {file.rowsStored} rows • {formatDate(file.uploadedAt)}
+                                    {uploadedFiles.map((file) => {
+                                        const isSelected = file.id === selectedFileId;
+                                        const isDeleting = deletingFileId === file.id;
+                                        return (
+                                            <div 
+                                                key={file.id} 
+                                                className={`uploaded-file-item ${isSelected ? 'selected' : ''}`}
+                                                onClick={() => handleFileSelect(file.id)}
+                                            >
+                                                <FaFileExcel className="file-icon" />
+                                                <div className="file-info">
+                                                    <div className="file-name">
+                                                        {file.filename || file.name || 'Untitled File'}
+                                                        {isSelected && (
+                                                            <FaCheck className="selected-check-icon" />
+                                                        )}
+                                                    </div>
+                                                    <div className="file-meta">
+                                                        {file.row_count || file.rowsStored || 0} rows • {formatDate(file.created_at || file.uploadedAt || new Date().toISOString())}
+                                                    </div>
+                                                </div>
+                                                <div className="file-actions">
+                                                    {isSelected && (
+                                                        <span className="active-badge">Active</span>
+                                                    )}
+                                                    <button
+                                                        className="delete-file-btn"
+                                                        onClick={(e) => handleFileDelete(file.id, e)}
+                                                        disabled={isDeleting}
+                                                        title="Delete file"
+                                                    >
+                                                        {isDeleting ? (
+                                                            <span className="loading-spinner small"></span>
+                                                        ) : (
+                                                            <FaTrash />
+                                                        )}
+                                                    </button>
                                                 </div>
                                             </div>
-                                            {file.status === 'success' && (
-                                                <div className="success-icon-wrapper">
-                                                    <FaCheckCircle className="success-icon" />
-                                                </div>
-                                            )}
-                                        </div>
-                                    ))}
+                                        );
+                                    })}
                                 </div>
+                            </div>
+                        ) : (
+                            <div className="no-files-message">
+                                No files uploaded yet. Upload a file to get started.
                             </div>
                         )}
                     </div>

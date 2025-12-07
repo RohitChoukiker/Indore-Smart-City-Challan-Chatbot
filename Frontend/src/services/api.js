@@ -93,12 +93,26 @@ export const agentAPI = {
     },
 
     // Query with natural language
-    query: async (query, topK = 5, mode = 'text') => {
-        return await apiClient.post('/agent/query', { 
+    query: async (query, topK = 5, mode = 'text', tableName = null) => {
+        const payload = { 
             query, 
             top_k: topK,
             mode: mode.toLowerCase() // 'text', 'graph', or 'table'
-        });
+        };
+        if (tableName) {
+            payload.table_name = tableName;
+        }
+        return await apiClient.post('/agent/query', payload);
+    },
+
+    // List all uploaded files
+    listFiles: async () => {
+        return await apiClient.get('/agent/files');
+    },
+
+    // Delete a file
+    deleteFile: async (fileId) => {
+        return await apiClient.delete(`/agent/files/${fileId}`);
     },
 };
 

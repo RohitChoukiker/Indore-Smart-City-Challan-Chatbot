@@ -200,12 +200,110 @@ def _insert_excel_data(db: Session, table_name: str, df: pd.DataFrame, columns: 
         raise
 
 
-def upload_excel_service(file_content: bytes, filename: str, user_id: str) -> dict:
+def _preprocess_csv_data(df: pd.DataFrame) -> pd.DataFrame:
     """
-    Upload and process Excel file, creating dynamic table and storing data.
+    Preprocess CSV data by filtering only required columns.
     
     Args:
-        file_content: Excel file content as bytes
+        df: Raw DataFrame from CSV
+    
+    Returns:
+        pd.DataFrame: Filtered DataFrame with only required columns
+    """
+    # Define the columns to keep (exact names as they appear in CSV)
+    required_columns = [
+        "Challan Number",
+        "Challan Source",
+        "Vehicle Number",
+        "Challan Date",
+        "Challan Place",
+        "Latitue Longtitue",  # Note: keeping original typo as it appears in CSV
+        "Violator Name",
+        "Violator Address",
+        "Violator Contact",
+        "Owner Name",
+        "Challan Status",
+        "Challan Amount",
+        "Vehicle Class",
+        "Send To Court Date",
+        "Court Name",
+        "Offences"
+    ]
+    
+    # Check which columns exist in the DataFrame
+    available_columns = df.columns.tolist()
+    missing_columns = [col for col in required_columns if col not in available_columns]
+    
+    if missing_columns:
+        print(f"[WARNING] Missing columns in CSV: {missing_columns}")
+        print(f"[INFO] Available columns: {available_columns}")
+        # Only keep columns that exist
+        required_columns = [col for col in required_columns if col in available_columns]
+    
+    # Filter DataFrame to only include required columns
+    df_filtered = df[required_columns].copy()
+    
+    return df_filtered
+
+
+def _read_csv_with_preprocessing(file_content: bytes, skip_rows: int = 7) -> pd.DataFrame:
+    """
+    Read CSV file with preprocessing: skip rows and use specific row as header.
+    
+    Args:
+        file_content: CSV file content as bytes
+        skip_rows: Number of rows to skip (default: 7)
+    
+    Returns:
+        pd.DataFrame: Preprocessed DataFrame
+    """
+    import io
+    
+    csv_file = io.BytesIO(file_content)
+    
+    # Read CSV: skip first 7 rows, use 8th row (index 7) as header
+    # Data starts from 9th row (index 8) onwards
+    try:
+        # Try with on_bad_lines (pandas 1.3+)
+        df = pd.read_csv(
+            csv_file,
+            skiprows=skip_rows,  # Skip first 7 rows
+            header=0,  # Use the first row after skipping as header (which is the 8th row)
+            encoding='utf-8',
+            on_bad_lines='skip'  # Skip malformed lines
+        )
+    except TypeError:
+        # Fallback for older pandas versions
+        try:
+            df = pd.read_csv(
+                csv_file,
+                skiprows=skip_rows,
+                header=0,
+                encoding='utf-8',
+                error_bad_lines=False,  # Old parameter name
+                warn_bad_lines=False
+            )
+        except TypeError:
+            # If both fail, try without error handling parameter
+            df = pd.read_csv(
+                csv_file,
+                skiprows=skip_rows,
+                header=0,
+                encoding='utf-8'
+            )
+    
+    # Preprocess: filter only required columns
+    df = _preprocess_csv_data(df)
+    
+    return df
+
+
+def upload_excel_service(file_content: bytes, filename: str, user_id: str) -> dict:
+    """
+    Upload and process Excel or CSV file, creating dynamic table and storing data.
+    
+    Args:
+        file_content: File content as bytes (Excel or CSV)
         filename: Original filename
         user_id: User ID from JWT token (for data isolation)
     
@@ -214,27 +312,40 @@ def upload_excel_service(file_content: bytes, filename: str, user_id: str) -> di
     """
     db: Session = SessionLocal()
     try:
-        # Read Excel file
         import io
-        excel_file = io.BytesIO(file_content)
         
-        # Read Excel into pandas DataFrame
-        df = pd.read_excel(excel_file, engine='openpyxl')
+        # Detect file type
+        file_ext = Path(filename).suffix.lower()
+        
+        # Read file based on type
+        if file_ext == '.csv':
+            # Process CSV file with preprocessing
+            df = _read_csv_with_preprocessing(file_content, skip_rows=7)
+        elif file_ext in ['.xlsx', '.xls']:
+            # Read Excel file
+            excel_file = io.BytesIO(file_content)
+            df = pd.read_excel(excel_file, engine='openpyxl')
+        else:
+            return {
+                "status": False,
+                "message": f"Unsupported file format: {file_ext}. Only .xlsx, .xls, and .csv are supported.",
+                "data": None
+            }
         
         if df.empty:
             return {
                 "status": False,
-                "message": "Excel file is empty",
+                "message": "File is empty after processing",
                 "data": None
             }
         
-        # Get column names from Excel
+        # Get column names
         columns = df.columns.tolist()
         
         if not columns:
             return {
                 "status": False,
-                "message": "Excel file has no columns",
+                "message": "File has no columns after processing",
                 "data": None
             }
         
@@ -283,7 +394,7 @@ def upload_excel_service(file_content: bytes, filename: str, user_id: str) -> di
         db.rollback()
         return {
             "status": False,
-            "message": f"Error processing Excel file: {str(e)}",
+            "message": f"Error processing file: {str(e)}",
             "data": None
         }
     finally:
@@ -1235,7 +1346,176 @@ Now provide a comprehensive, accurate answer to the user's query:"""
         return f"Error generating answer: {str(e)}"
 
 
-def query_service(query: str, top_k: int = 5, user_id: str = None, mode: str = "text") -> dict:
+def list_files_service(user_id: str) -> dict:
+    """
+    List all uploaded files for a specific user.
+    
+    Args:
+        user_id: User ID for data isolation
+    
+    Returns:
+        dict: Standardized response with list of files
+    """
+    db: Session = SessionLocal()
+    try:
+        if not user_id:
+            return {
+                "status": False,
+                "message": "User authentication required",
+                "data": None
+            }
+        
+        # Get all uploads for this user, ordered by most recent first
+        uploads = db.query(ExcelUploads).filter(
+            ExcelUploads.user_id == user_id
+        ).order_by(ExcelUploads.created_at.desc()).all()
+        
+        files = []
+        for upload in uploads:
+            files.append({
+                "id": upload.id,
+                "filename": upload.filename,
+                "table_name": upload.table_name,
+                "columns": upload.columns if isinstance(upload.columns, list) else [],
+                "row_count": upload.row_count,
+                "created_at": upload.created_at.isoformat() if upload.created_at else None,
+                "updated_at": upload.updated_at.isoformat() if upload.updated_at else None
+            })
+        
+        return {
+            "status": True,
+            "message": f"Found {len(files)} uploaded file(s)",
+            "data": {
+                "files": files,
+                "total_count": len(files)
+            }
+        }
+    except Exception as e:
+        return {
+            "status": False,
+            "message": f"Error listing files: {str(e)}",
+            "data": None
+        }
+    finally:
+        db.close()
+
+
+def _drop_table(db: Session, table_name: str) -> bool:
+    """
+    Drop a database table.
+    
+    Args:
+        db: Database session
+        table_name: Name of the table to drop
+    
+    Returns:
+        bool: True if successful, False otherwise
+    """
+    try:
+        drop_sql = f"DROP TABLE IF EXISTS `{table_name}`"
+        db.execute(text(drop_sql))
+        db.commit()
+        return True
+    except Exception as e:
+        db.rollback()
+        print(f"Error dropping table {table_name}: {str(e)}")
+        return False
+
+
+def delete_file_service(file_id: str, user_id: str) -> dict:
+    """
+    Delete an uploaded file and its associated database table.
+    
+    Args:
+        file_id: ID of the file upload record to delete
+        user_id: User ID for data isolation (security check)
+    
+    Returns:
+        dict: Standardized response with deletion status
+    """
+    db: Session = SessionLocal()
+    try:
+        if not user_id:
+            return {
+                "status": False,
+                "message": "User authentication required",
+                "data": None
+            }
+        
+        # Find the upload record
+        upload = db.query(ExcelUploads).filter(
+            ExcelUploads.id == file_id,
+            ExcelUploads.user_id == user_id  # Ensure user owns this file
+        ).first()
+        
+        if not upload:
+            return {
+                "status": False,
+                "message": "File not found or you don't have permission to delete it",
+                "data": None
+            }
+        
+        table_name = upload.table_name
+        filename = upload.filename
+        
+        # Drop the database table
+        table_dropped = _drop_table(db, table_name)
+        
+        if not table_dropped:
+            print(f"[WARNING] Failed to drop table {table_name}, but continuing with record deletion")
+        
+        # Delete the upload record
+        db.delete(upload)
+        db.commit()
+        
+        return {
+            "status": True,
+            "message": f"Successfully deleted file '{filename}' and its database table",
+            "data": {
+                "file_id": file_id,
+                "filename": filename,
+                "table_name": table_name,
+                "table_dropped": table_dropped
+            }
+        }
+    except Exception as e:
+        db.rollback()
+        return {
+            "status": False,
+            "message": f"Error deleting file: {str(e)}",
+            "data": None
+        }
+    finally:
+        db.close()
+
+
+def _get_table_name_by_id_or_latest(db: Session, user_id: str, table_name: Optional[str] = None) -> Optional[str]:
+    """
+    Get table name either from provided table_name or from latest upload.
+    
+    Args:
+        db: Database session
+        user_id: User ID for data isolation
+        table_name: Optional specific table name to use
+    
+    Returns:
+        str: Table name or None if not found
+    """
+    if table_name:
+        # Verify the table belongs to this user
+        upload = db.query(ExcelUploads).filter(
+            ExcelUploads.table_name == table_name,
+            ExcelUploads.user_id == user_id
+        ).first()
+        if upload:
+            return table_name
+        return None
+    else:
+        # Use latest upload
+        return _get_latest_table_name(db, user_id)
+
+
+def query_service(query: str, top_k: int = 5, user_id: str = None, mode: str = "text", table_name: Optional[str] = None) -> dict:
     """
     Process natural language query using RAG system.
     
@@ -1244,6 +1524,7 @@ def query_service(query: str, top_k: int = 5, user_id: str = None, mode: str = "
         top_k: Number of top results to retrieve
         user_id: User ID for data isolation
         mode: Response mode - "text", "graph", or "table"
+        table_name: Optional specific table name to query. If None, uses latest uploaded file.
     
     Returns:
         dict: Standardized response with answer and results
@@ -1265,21 +1546,28 @@ def query_service(query: str, top_k: int = 5, user_id: str = None, mode: str = "
                 "data": None
             }
         
-        # Get the latest uploaded table for this user
-        table_name = _get_latest_table_name(db, user_id)
+        # Get table name (either specified or latest)
+        selected_table_name = _get_table_name_by_id_or_latest(db, user_id, table_name)
         
-        if not table_name:
-            return {
-                "status": False,
-                "message": "No Excel file has been uploaded yet. Please upload an Excel file first.",
-                "data": None
-            }
+        if not selected_table_name:
+            if table_name:
+                return {
+                    "status": False,
+                    "message": f"Table '{table_name}' not found or you don't have permission to access it. Please upload a file first or select a valid file.",
+                    "data": None
+                }
+            else:
+                return {
+                    "status": False,
+                    "message": "No Excel file has been uploaded yet. Please upload an Excel file first.",
+                    "data": None
+                }
         
         # Get table schema
-        table_schema = _get_table_schema(db, table_name)
+        table_schema = _get_table_schema(db, selected_table_name)
         
         # Generate SQL query using Gemini
-        sql_query = _generate_sql_query(query, table_schema, table_name)
+        sql_query = _generate_sql_query(query, table_schema, selected_table_name)
         
         if not sql_query:
             # Check if GEMINI_KEY exists
@@ -1304,7 +1592,7 @@ def query_service(query: str, top_k: int = 5, user_id: str = None, mode: str = "
             "answer": answer,
             "results": results if results else None,
             "sql_query": sql_query,
-            "table_name": table_name,
+            "table_name": selected_table_name,
             "mode": mode
         }
         
