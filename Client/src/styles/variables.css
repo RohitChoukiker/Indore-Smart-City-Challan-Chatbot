@@ -1,0 +1,72 @@
+:root {
+  /* Warm Dark Mode (Default) - Greyish charcoal tones */
+  --bg-color: #2A2A2E;
+  --sidebar-bg: #3E3E42;
+  --input-bg: #3E3E42;
+  --menu-bg: #4A4A4E;
+  --text-color: #E8E6E3;
+  --accent-color: #D4A574;
+  --hover-color: #4A4A4E;
+  --icon-color: #C4B5A0;
+  --brand-color: #E8B86D;
+  --brand-hover: #F5C97A;
+  --logo-shadow: rgba(232, 184, 109, 0.3);
+  --header-glow: rgba(232, 184, 109, 0.1);
+  --font-family: 'Inter', sans-serif;
+  --heading-font: 'Outfit', sans-serif;
+}
+
+[data-theme="light"] {
+  /* Warm Light Mode - Cream/beige tones */
+  --bg-color: #FFF9F0;
+  --sidebar-bg: #F5F1E8;
+  --input-bg: #F5F1E8;
+  --menu-bg: #FEFDFB;
+  --text-color: #3D3935;
+  --accent-color: #E8B86D;
+  --hover-color: #F0E6D8;
+  --icon-color: #8B7E6A;
+  --brand-color: #D4763C;
+  --brand-hover: #E8854A;
+  --logo-shadow: rgba(212, 118, 60, 0.25);
+  --header-glow: rgba(212, 118, 60, 0.08);
+}
+
+* {
+  transition: background-color 0.3s ease-in-out, color 0.3s ease-in-out, border-color 0.3s ease-in-out, fill 0.3s ease-in-out, stroke 0.3s ease-in-out;
+}
+
+body {
+  background-color: var(--bg-color);
+  color: var(--text-color);
+  font-family: var(--font-family);
+  margin: 0;
+  padding: 0;
+}
+
+.main-layout {
+  display: flex;
+  height: 100vh;
+  width: 100vw;
+  overflow: hidden;
+  justify-content: center;
+}
+
+.content-area {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  position: relative;
+  max-width: 100%;
+}
+
+@media (max-width: 768px) {
+  .main-layout {
+    flex-direction: column;
+  }
+
+  .content-area {
+    width: 100%;
+    height: 100%;
+  }
+}
