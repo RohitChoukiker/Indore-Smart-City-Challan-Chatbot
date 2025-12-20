@@ -60,36 +60,32 @@ const Landing = () => {
           color: #2b2b2b;
         }
 
-        /* GLOBAL CONTAINER (🔥 MOST IMPORTANT FIX) */
         .container {
           max-width: 1280px;
           margin: 0 auto;
-          width: 100%;
           padding: 0 24px;
+          width: 100%;
         }
 
-        /* PAGE STRUCTURE */
         .landing-page {
           min-height: 100vh;
           display: flex;
           flex-direction: column;
         }
 
-        /* Ensure content grows and footer stays at bottom */
         main {
           flex: 1;
         }
 
-
-        /* HEADER */
+        /* ================= HEADER ================= */
         header {
-          padding: 12px 0;
+          padding: 16px 0;
         }
 
         .header-inner {
           display: flex;
-          justify-content: space-between;
           align-items: center;
+          justify-content: space-between;
         }
 
         .logo {
@@ -99,26 +95,21 @@ const Landing = () => {
         }
 
         .logo img {
-          height: 40px;
-          width: auto;
+          height: 42px;
         }
 
-        .logo-text {
-          display: flex;
-          flex-direction: column;
-        }
-
-        .logo small {
+        .logo-text small {
           font-size: 12px;
           font-weight: 600;
         }
 
-        .logo h1 {
-          font-size: 26px;
+        .logo-text h1 {
+          font-size: 24px;
           font-weight: 600;
         }
 
-        .logo p {
+        .logo-text p {
+          font-size: 13px;
           color: #555;
         }
 
@@ -131,16 +122,24 @@ const Landing = () => {
           cursor: pointer;
         }
 
-        /* HERO */
+        /* ================= HERO ================= */
         .hero {
-          padding: 40px 0 40px;
+          padding: 48px 0;
         }
 
         .hero-grid {
           display: grid;
           grid-template-columns: 1.3fr 0.7fr;
-          gap: clamp(40px, 6vw, 80px);
+          gap: 64px;
           align-items: center;
+        }
+
+        .hero-left {
+          display: flex;
+          flex-direction: column;
+          justify-content: center;
+          align-items: center;
+          text-align: center;
         }
 
         .hero h2 {
@@ -149,15 +148,18 @@ const Landing = () => {
         }
 
         .hero p {
-          max-width: 640px;
+          max-width: 620px;
           line-height: 1.6;
           margin-bottom: 28px;
           color: #444;
+          margin-left: auto;
+          margin-right: auto;
         }
 
         .hero-actions {
           display: flex;
           gap: 14px;
+          justify-content: center;
         }
 
         .btn {
@@ -169,34 +171,64 @@ const Landing = () => {
           cursor: pointer;
         }
 
+        /* CHATBOX */
         .chatbox {
+          background: #fff;
+          border-radius: 18px;
+          padding: 32px;
+          box-shadow: 0 10px 30px rgba(0,0,0,0.08);
+          text-align: center;
           display: flex;
           flex-direction: column;
-          gap: 10px;
+          align-items: center;
+          gap: 12px;
         }
 
-        /* FEATURES */
+        .chatbox svg {
+          font-size: 48px;
+        }
+
+        .chatbox h4 {
+          font-size: 18px;
+        }
+
+        .chatbox p {
+          font-size: 14px;
+          color: #555;
+        }
+
+        /* ================= FEATURES ================= */
         .features {
-          padding: 40px 0 60px;
+          padding: 56px 0;
         }
 
         .features h3 {
           font-size: 24px;
           margin-bottom: 36px;
+          text-align: center;
         }
 
         .features-grid {
           display: grid;
           grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
-          gap: 40px;
+          gap: 32px;
         }
 
         .feature {
-          max-width: 280px;
+          background: #fff;
+          padding: 26px;
+          border-radius: 18px;
+          box-shadow: 0 8px 24px rgba(0,0,0,0.06);
+          text-align: center;
+        }
+
+        .feature svg {
+          font-size: 32px;
+          margin-bottom: 12px;
         }
 
         .feature h4 {
-          margin: 10px 0;
+          margin-bottom: 8px;
         }
 
         .feature p {
@@ -205,7 +237,58 @@ const Landing = () => {
           line-height: 1.5;
         }
 
-        /* FOOTER */
+        /* ================= ABOUT US ================= */
+        .about-us {
+          padding: 64px 0;
+          background: #fff;
+        }
+
+        .about-content {
+          max-width: 900px;
+          margin: 0 auto;
+          text-align: center;
+        }
+
+        .about-us h3 {
+          font-size: 32px;
+          margin-bottom: 24px;
+          color: #2b2b2b;
+        }
+
+        .about-us p {
+          font-size: 16px;
+          line-height: 1.8;
+          color: #444;
+          margin-bottom: 20px;
+        }
+
+        .about-stats {
+          display: grid;
+          grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+          gap: 32px;
+          margin-top: 48px;
+        }
+
+        .stat-card {
+          background: #fbf6ee;
+          padding: 28px;
+          border-radius: 16px;
+          text-align: center;
+        }
+
+        .stat-card h4 {
+          font-size: 36px;
+          color: #d9823c;
+          margin-bottom: 8px;
+        }
+
+        .stat-card p {
+          font-size: 14px;
+          color: #555;
+          margin: 0;
+        }
+
+        /* ================= FOOTER ================= */
         footer {
           background: #2b2b2b;
           color: #ccc;
@@ -235,6 +318,13 @@ const Landing = () => {
           margin-bottom: 8px;
         }
 
+        footer p {
+          display: flex;
+          align-items: center;
+          gap: 8px;
+          margin-bottom: 8px;
+        }
+
         .social {
           display: flex;
           gap: 14px;
@@ -249,52 +339,15 @@ const Landing = () => {
           color: #888;
         }
 
-        /* RESPONSIVE */
+        /* ================= RESPONSIVE ================= */
         @media (max-width: 900px) {
-          .container {
-            padding: 0 16px;
-          }
-
-          header {
-            padding: 16px 0;
-          }
-
-          .logo img {
-            height: 45px;
-          }
-
-          .logo h1 {
-            font-size: 24px;
-          }
-
-          .logo p {
-            font-size: 12px;
-          }
-
-          .logo small {
-            font-size: 10px;
-          }
-
-          .login-btn {
-            padding: 8px 16px;
-            font-size: 13px;
-          }
-
-          .hero {
-            padding: 32px 0 32px;
-          }
-
           .hero-grid {
             grid-template-columns: 1fr;
-            gap: 32px;
+            gap: 36px;
           }
 
           .hero h2 {
             font-size: 28px;
-          }
-
-          .hero p {
-            font-size: 15px;
           }
 
           .hero-actions {
@@ -303,73 +356,28 @@ const Landing = () => {
 
           .btn {
             width: 100%;
-            text-align: center;
           }
 
-          .features {
-            padding: 32px 0 48px;
-          }
-
-          .features h3 {
-            font-size: 20px;
-            margin-bottom: 24px;
-          }
-
-          .features-grid {
-            grid-template-columns: 1fr;
-            gap: 28px;
-          }
-
-          .feature {
-            max-width: 100%;
+          .chatbox {
+            max-width: 360px;
+            margin: 0 auto;
           }
 
           .footer-top {
             grid-template-columns: 1fr;
             gap: 32px;
-            padding: 32px 0;
-          }
-
-          .footer-bottom {
-            font-size: 13px;
           }
         }
 
         @media (max-width: 480px) {
-          .logo {
-            gap: 12px;
-          }
-
-          .logo img {
-            height: 40px;
-          }
-
-          .logo h1 {
-            font-size: 20px;
-          }
-
-          .logo p {
-            font-size: 11px;
-          }
-
           .hero h2 {
             font-size: 24px;
-          }
-
-          .hero p {
-            font-size: 14px;
-          }
-
-          .btn {
-            padding: 8px 18px;
-            font-size: 13px;
           }
         }
       `}</style>
 
       {/* ================= JSX ================= */}
       <div className="landing-page">
-        {/* HEADER */}
         <header>
           <div className="container header-inner">
             <div className="logo">
@@ -386,35 +394,28 @@ const Landing = () => {
           </div>
         </header>
 
-        {/* HERO */}
         <section className="hero">
-          <div className="container hero-grid">
-            <div>
+          <div className="container h">
+            <div className="hero-left">
               <h2>
-                Welcome to Indore <br /> Smart Challan System
+                Welcome to Indore  Smart Challan System
               </h2>
               <p>
                 Your intelligent assistant for managing traffic challans,
-                checking violations, and staying updated with Indore’s smart
-                city initiatives.
+                checking violations, and staying updated with Indore’s smart city
+                initiatives.
               </p>
               <div className="hero-actions">
                 <button className="btn" onClick={() => navigate("/login")}>
                   Get Started
                 </button>
-               
               </div>
             </div>
 
-            <div className="chatbox">
-              <FaRobot />
-              <h4>AI Chatbot Assistant</h4>
-              <p>Smart, Fast, and Always Ready to Help</p>
-            </div>
+           
           </div>
         </section>
 
-        {/* FEATURES */}
         <section className="features">
           <div className="container">
             <h3>Why Choose Us?</h3>
@@ -430,7 +431,28 @@ const Landing = () => {
           </div>
         </section>
 
-        {/* FOOTER */}
+        <section className="about-us">
+          <div className="container">
+            <div className="about-content">
+              <h3>About IMC Smart City Indore</h3>
+              <p>
+                Indore Municipal Corporation is committed to transforming Indore
+                into a world-class smart city. Our Smart Challan Management System
+                is a step towards digitization and transparency in traffic
+                enforcement.
+              </p>
+              <p>
+                We leverage cutting-edge AI technology to provide citizens with
+                instant access to challan information, payment options, and
+                real-time assistance through our intelligent chatbot.
+              </p>
+
+              
+            
+            </div>
+          </div>
+        </section>
+
         <footer>
           <div className="container footer-top">
             <div className="footer-section-first">
@@ -449,10 +471,10 @@ const Landing = () => {
 
             <div>
               <h4>Quick Links</h4>
-              <a href="">About</a>
-              <a href="">Services</a>
-              <a href="">FAQ</a>
-              <a href="">Privacy</a>
+              <a href="#">About</a>
+              <a href="#">Services</a>
+              <a href="#">FAQ</a>
+              <a href="#">Privacy</a>
             </div>
 
             <div>
