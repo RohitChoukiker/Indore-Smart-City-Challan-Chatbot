@@ -59,7 +59,7 @@ const Login = () => {
             setLoading(false);
 
             if (result.success) {
-                navigate('/');
+                navigate('/home');
             } else {
                 setError(result.message || 'Invalid OTP. Please try again.');
             }
@@ -82,7 +82,7 @@ const Login = () => {
             setLoading(false);
 
             if (result.success) {
-                navigate('/');
+                navigate('/home');
             } else {
                 setError(result.message || 'Invalid MPIN. Please try again.');
             }

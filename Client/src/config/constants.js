@@ -1,5 +1,5 @@
 // API Configuration
-export const API_BASE_URL = 'http://localhost:8000/api';
+export const API_BASE_URL = 'https://imc-challan-bot-server-561129735156.europe-west1.run.app/api';
 
 // API Endpoints
 export const API_ENDPOINTS = {
