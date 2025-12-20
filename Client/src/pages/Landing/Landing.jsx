@@ -298,12 +298,16 @@ const Landing = () => {
         .footer-top {
           padding: 48px 0;
           display: grid;
-          grid-template-columns: 1.5fr 1fr 1fr;
+          grid-template-columns: 1.5fr 1fr;
           gap: 48px;
         }
 
         .footer-section-first {
           padding-left: 40px;
+        }
+
+        .footer-section-first p {
+          max-width: 400px;
         }
 
         footer h4 {
@@ -341,6 +345,30 @@ const Landing = () => {
 
         /* ================= RESPONSIVE ================= */
         @media (max-width: 900px) {
+          .container {
+            padding: 0 16px;
+          }
+
+          header {
+            padding: 12px 0;
+          }
+
+          .logo img {
+            height: 36px;
+          }
+
+          .logo-text h1 {
+            font-size: 20px;
+          }
+
+          .logo-text p {
+            font-size: 11px;
+          }
+
+          .hero {
+            padding: 32px 0;
+          }
+
           .hero-grid {
             grid-template-columns: 1fr;
             gap: 36px;
@@ -363,15 +391,136 @@ const Landing = () => {
             margin: 0 auto;
           }
 
+          .features {
+            padding: 40px 0;
+          }
+
+          .features h3 {
+            font-size: 22px;
+          }
+
+          .features-grid {
+            grid-template-columns: 1fr;
+            gap: 24px;
+          }
+
+          .about-us {
+            padding: 40px 0;
+          }
+
+          .about-us h3 {
+            font-size: 26px;
+          }
+
+          .about-us p {
+            font-size: 15px;
+          }
+
+          .about-stats {
+            grid-template-columns: repeat(2, 1fr);
+            gap: 20px;
+            margin-top: 32px;
+          }
+
+          .stat-card h4 {
+            font-size: 32px;
+          }
+
           .footer-top {
             grid-template-columns: 1fr;
             gap: 32px;
+            padding: 32px 0;
+          }
+
+          .footer-section-first {
+            padding-left: 0;
+            text-align: center;
+          }
+
+          .footer-section-first p {
+            max-width: 100%;
+          }
+
+          footer .container > div:last-child {
+            text-align: center;
+          }
+
+          footer .container > div:last-child p {
+            justify-content: center;
+          }
+          .social {
+            gap: 12px;
+            margin-top: 12px;
+            justify-content: center;
+          }
+
+          footer h4 {
+            font-size: 18px;
+          }
+
+          footer p, footer a {
+            font-size: 14px;
+          }
+
+          .social {
+            gap: 12px;
+            margin-top: 12px;
+          }
+
+          .social svg {
+            font-size: 20px;
+          }
+
+          .footer-bottom {
+            padding: 14px 0;
+            font-size: 13px;
           }
         }
 
         @media (max-width: 480px) {
+          .logo img {
+            height: 32px;
+          }
+
+          .logo-text h1 {
+            font-size: 18px;
+          }
+
+          .logo-text small {
+            font-size: 10px;
+          }
+
           .hero h2 {
             font-size: 24px;
+          }
+
+          .hero p {
+            font-size: 14px;
+          }
+
+          .about-stats {
+            grid-template-columns: 1fr;
+            gap: 16px;
+          }
+
+          .stat-card {
+            padding: 20px;
+          }
+
+          .stat-card h4 {
+            font-size: 28px;
+          }
+
+          .footer-top {
+            gap: 24px;
+          }
+
+          footer h4 {
+            font-size: 16px;
+          }
+
+          .social svg {
+            font-size: 18px;
           }
         }
       `}</style>
@@ -467,14 +616,6 @@ const Landing = () => {
                 <FaInstagram />
                 <FaLinkedin />
               </div>
-            </div>
-
-            <div>
-              <h4>Quick Links</h4>
-              <a href="#">About</a>
-              <a href="#">Services</a>
-              <a href="#">FAQ</a>
-              <a href="#">Privacy</a>
             </div>
 
             <div>
