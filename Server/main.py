@@ -1,17 +1,13 @@
-"""
-FastAPI main application.
-
-Entry point for the FastAPI backend server.
-"""
 
 # Standard library imports
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
-# Local application importss
+# Local application imports
 from modules.Auth.auth_controller import authRouter
 from modules.Agent.agent_controller import agentRouter
-sched_setscheduler(pid, policy, param)
+from database.models import Base, engine
+
 # Create FastAPI app
 app = FastAPI(
     title="Indore Smart City Development API",
@@ -19,17 +15,28 @@ app = FastAPI(
     version="1.0.0"
 )
 
-# CORS middleware configuration
+
+# Create all database tables on startup
+@app.on_event("startup")
+async def startup_event():
+    """Initialize database tables on application startup."""
+    try:
+        Base.metadata.create_all(bind=engine)
+        print("✅ Database tables created successfully!")
+    except Exception as e:
+        print(f"❌ Error creating database tables: {e}")
+
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],  # Configure this properly in production
+    allow_origins=["*"],  
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
 
 # Register routers
-app.include_router(authRouter, prefix=ddd"/api/auth", tags=["Authentication"])
+app.include_router(authRouter, prefix="/api/auth", tags=["Authentication"])
 app.include_router(agentRouter, prefix="/api/agent", tags=["Agent"])
 
 
