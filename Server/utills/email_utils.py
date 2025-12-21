@@ -13,6 +13,8 @@ from typing import Optional
 from fastapi_mail import FastMail, MessageSchema, ConnectionConfig
 from dotenv import load_dotenv
 import os
+import asyncio
+from concurrent.futures import ThreadPoolExecutor
 
 # Load environment variables
 load_dotenv()
@@ -47,6 +49,9 @@ mail_config = ConnectionConfig(
 # FastMail instance
 fastmail = FastMail(mail_config)
 
+# Thread pool for non-blocking email sending
+email_executor = ThreadPoolExecutor(max_workers=5)
+
 
 def generate_otp(length: int = 6) -> str:
     """
@@ -63,14 +68,14 @@ def generate_otp(length: int = 6) -> str:
 
 async def send_otp_email(email: str, otp: str) -> bool:
     """
-    Send OTP email to user.
+    Send OTP email to user asynchronously (non-blocking).
     
     Args:
         email: Recipient email address
         otp: OTP code to send
     
     Returns:
-        bool: True if email sent successfully, False otherwise
+        bool: True if email sending started successfully, False otherwise
     """
     # Development mode: Log OTP to console if email credentials not configured
     if not MAIL_USERNAME or not MAIL_PASSWORD:
@@ -84,6 +89,15 @@ async def send_otp_email(email: str, otp: str) -> bool:
         print("See EMAIL_SETUP_GUIDE.md for detailed instructions\n")
         return True  # Return True to allow testing without email
     
+    # Create email sending task without awaiting (fire and forget)
+    asyncio.create_task(_send_email_task(email, otp))
+    return True  # Return immediately
+
+
+async def _send_email_task(email: str, otp: str):
+    """
+    Internal task to send email in background.
+    """
     try:
         message = MessageSchema(
             subject="Your OTP Code",
@@ -104,13 +118,14 @@ async def send_otp_email(email: str, otp: str) -> bool:
         )
         
         await fastmail.send_message(message)
-        return True
+        print(f"✅ Email sent successfully to {email}")
     except Exception as e:
         error_msg = str(e)
         print("=" * 60)
         print("❌ ERROR SENDING EMAIL")
         print("=" * 60)
         print(f"Error: {error_msg}")
+        print(f"Email: {email}")
         
         # Provide helpful error messages
         if "535" in error_msg or "BadCredentials" in error_msg or "Username and Password not accepted" in error_msg:
