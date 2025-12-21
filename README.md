@@ -40,17 +40,14 @@ Indore-Smart-City-Challan-Chatbot/
 ### Frontend
 - **React** - UI library
 - **Vite** - Build tool and dev server
-- **CSS3** - Styling
-- **Context API** - State management
 
 ### Backend
 - **FastAPI** - Modern Python web framework
 - **Python 3.x** - Programming language
-- **SQLAlchemy** - ORM (assumed)
+- **SQLAlchemy** - ORM 
 - **Docker** - Containerization
 
 ## 📋 Prerequisites
-
 - **Node.js** (v16 or higher)
 - **Python** (v3.8 or higher)
 - **Docker** (optional, for containerized deployment)
@@ -100,7 +97,7 @@ pip install -r requirements.txt
 uvicorn main:app --reload
 ```
 
-The backend will be available at `http://localhost:8000`
+The backend will be available at `http://localhost:8080`
 
 ### Docker Setup
 
