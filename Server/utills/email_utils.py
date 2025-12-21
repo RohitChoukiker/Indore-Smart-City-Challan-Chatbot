@@ -1,8 +1,4 @@
-"""
-Email utility functions for sending OTP emails.
 
-Uses FastAPIMail for email delivery.
-"""
 
 # Standard library imports
 import random
@@ -54,29 +50,12 @@ email_executor = ThreadPoolExecutor(max_workers=5)
 
 
 def generate_otp(length: int = 6) -> str:
-    """
-    Generate a random OTP.
-    
-    Args:
-        length: Length of OTP (default: 6)
-    
-    Returns:
-        str: Generated OTP string
-    """
+   
     return ''.join(random.choices(string.digits, k=length))
 
 
 async def send_otp_email(email: str, otp: str) -> bool:
-    """
-    Send OTP email to user asynchronously (non-blocking).
-    
-    Args:
-        email: Recipient email address
-        otp: OTP code to send
-    
-    Returns:
-        bool: True if email sending started successfully, False otherwise
-    """
+  
     # Development mode: Log OTP to console if email credentials not configured
     if not MAIL_USERNAME or not MAIL_PASSWORD:
         print("=" * 60)
@@ -87,11 +66,11 @@ async def send_otp_email(email: str, otp: str) -> bool:
         print("=" * 60)
         print("\nTo enable email sending, configure MAIL_USERNAME and MAIL_PASSWORD in .env")
         print("See EMAIL_SETUP_GUIDE.md for detailed instructions\n")
-        return True  # Return True to allow testing without email
+        return True  
     
-    # Create email sending task without awaiting (fire and forget)
+   
     asyncio.create_task(_send_email_task(email, otp))
-    return True  # Return immediately
+    return True 
 
 
 async def _send_email_task(email: str, otp: str):
@@ -118,16 +97,16 @@ async def _send_email_task(email: str, otp: str):
         )
         
         await fastmail.send_message(message)
-        print(f"✅ Email sent successfully to {email}")
+        print(f" Email sent successfully to {email}")
     except Exception as e:
         error_msg = str(e)
         print("=" * 60)
-        print("❌ ERROR SENDING EMAIL")
+        print(" ERROR SENDING EMAIL")
         print("=" * 60)
         print(f"Error: {error_msg}")
         print(f"Email: {email}")
         
-        # Provide helpful error messages
+       
         if "535" in error_msg or "BadCredentials" in error_msg or "Username and Password not accepted" in error_msg:
             print("\n🔧 GMAIL CREDENTIALS ISSUE:")
             print("1. Ensure you're using Gmail App Password (not regular password)")

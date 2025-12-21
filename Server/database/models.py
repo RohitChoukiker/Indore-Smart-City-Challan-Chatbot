@@ -1,11 +1,3 @@
-"""
-Database models and connection setup for FastAPI application.
-
-This module contains:
-- Database connection configuration using environment variables
-- SQLAlchemy Base and SessionLocal setup
-- Database models (Users, etc.)
-"""
 
 # Standard library imports
 import os
@@ -54,12 +46,7 @@ def generate_uuid() -> str:
 
 
 class Users(Base):
-    """
-    Users table model.
-    
-    Contains user information including email, OTP, name, department,
-    designation, mpin, and timestamps.
-    """
+   
     __tablename__ = "users"
     
     # Primary key
@@ -82,12 +69,7 @@ class Users(Base):
 
 
 class ExcelUploads(Base):
-    """
-    Excel uploads table model.
-    
-    Tracks metadata about uploaded Excel files including filename,
-    table name, columns, row count, and user association.
-    """
+   
     __tablename__ = "excel_uploads"
     
     # Primary key

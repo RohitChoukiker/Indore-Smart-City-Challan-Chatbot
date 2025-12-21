@@ -1,10 +1,4 @@
-"""
-Agent service layer.
 
-Contains all business logic for Excel upload, dynamic table creation, and RAG query processing.
-"""
-
-# Standard library imports
 import sys
 import os
 import json
@@ -14,31 +8,27 @@ from datetime import datetime
 from pathlib import Path
 from typing import Optional, Dict, Any, List
 
-# Third-party imports
 import pandas as pd
 import google.generativeai as genai
 from sqlalchemy.orm import Session
 from sqlalchemy import text, inspect
 
-# Add parent directories to path for imports
+
 sys.path.insert(0, str(Path(__file__).parent.parent.parent))
 
-# Local application imports
+
 from database.models import SessionLocal, ExcelUploads, engine
 from dotenv import load_dotenv
 
-# Load environment variables
-# Try loading from Backend directory first, then root
 env_path = Path(__file__).parent.parent.parent / ".env"
 if env_path.exists():
     load_dotenv(env_path)
 else:
-    load_dotenv()  # Fallback to default location
+    load_dotenv()
 
-# Gemini API configuration
+
 GEMINI_KEY = os.getenv("GEMINI_KEY")
 if GEMINI_KEY:
-    # Remove quotes if present
     GEMINI_KEY = GEMINI_KEY.strip().strip('"').strip("'")
     if GEMINI_KEY:
         genai.configure(api_key=GEMINI_KEY)
@@ -50,76 +40,38 @@ else:
 
 
 def _sanitize_table_name(name: str) -> str:
-    """
-    Sanitize table name to be valid SQL identifier.
-    
-    Args:
-        name: Original name
-    
-    Returns:
-        str: Sanitized table name
-    """
-    # Remove special characters, keep only alphanumeric and underscores
     sanitized = re.sub(r'[^a-zA-Z0-9_]', '_', name)
-    # Remove leading/trailing underscores
     sanitized = sanitized.strip('_')
-    # Ensure it starts with a letter
+
     if sanitized and not sanitized[0].isalpha():
         sanitized = 'tbl_' + sanitized
-    # Limit length
+
     if len(sanitized) > 64:
         sanitized = sanitized[:64]
     return sanitized.lower()
 
 
 def _sanitize_column_name(name: str) -> str:
-    """
-    Sanitize column name to be valid SQL identifier.
-    
-    Args:
-        name: Original column name
-    
-    Returns:
-        str: Sanitized column name
-    """
-    # Remove special characters, keep only alphanumeric and underscores
     sanitized = re.sub(r'[^a-zA-Z0-9_]', '_', str(name))
-    # Remove leading/trailing underscores
     sanitized = sanitized.strip('_')
-    # Ensure it starts with a letter
+
     if sanitized and not sanitized[0].isalpha():
         sanitized = 'col_' + sanitized
-    # Limit length
+
     if len(sanitized) > 64:
         sanitized = sanitized[:64]
     return sanitized.lower()
 
 
 def _create_dynamic_table(db: Session, table_name: str, columns: List[str]) -> bool:
-    """
-    Create a dynamic SQL table with specified columns.
-    
-    Args:
-        db: Database session
-        table_name: Name of the table to create
-        columns: List of column names from Excel
-    
-    Returns:
-        bool: True if successful, False otherwise
-    """
     try:
-        # Sanitize column names
         sanitized_columns = [_sanitize_column_name(col) for col in columns]
         
-        # Build CREATE TABLE SQL
-        # Add id column first, then all Excel columns as TEXT/VARCHAR
         column_defs = ["id VARCHAR(36) PRIMARY KEY"]
         
         for col in sanitized_columns:
-            # Use TEXT for flexibility (can store long strings)
             column_defs.append(f"`{col}` TEXT")
         
-        # Add timestamps
         column_defs.append("created_at DATETIME DEFAULT CURRENT_TIMESTAMP")
         column_defs.append("updated_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP")
         
@@ -139,18 +91,7 @@ def _create_dynamic_table(db: Session, table_name: str, columns: List[str]) -> b
 
 
 def _insert_excel_data(db: Session, table_name: str, df: pd.DataFrame, columns: List[str]) -> int:
-    """
-    Insert Excel data into the dynamic table.
-    
-    Args:
-        db: Database session
-        table_name: Name of the table
-        df: Pandas DataFrame with Excel data
-        columns: List of original column names
-    
-    Returns:
-        int: Number of rows inserted
-    """
+  
     try:
         import uuid
         
@@ -158,18 +99,18 @@ def _insert_excel_data(db: Session, table_name: str, df: pd.DataFrame, columns: 
         sanitized_columns = [_sanitize_column_name(col) for col in columns]
         
         for _, row in df.iterrows():
-            # Generate UUID for id
+          
             record_id = str(uuid.uuid4())
             
-            # Build column list for INSERT
+           
             col_names = ['id'] + sanitized_columns
             col_names_str = ', '.join([f"`{col}`" for col in col_names])
             
-            # Build values
+         
             values = [f"'{record_id}'"]
             for col in columns:
                 value = row[col]
-                # Handle different data types
+               
                 if pd.isna(value):
                     values.append("NULL")
                 elif isinstance(value, (pd.Timestamp, pd.DatetimeTZDtype)):
@@ -177,13 +118,13 @@ def _insert_excel_data(db: Session, table_name: str, df: pd.DataFrame, columns: 
                 elif isinstance(value, (int, float)):
                     values.append(f"'{str(value)}'")
                 else:
-                    # Escape single quotes in strings
+                 
                     escaped_value = str(value).replace("'", "''")
                     values.append(f"'{escaped_value}'")
             
             values_str = ', '.join(values)
             
-            # Insert row
+           
             insert_sql = f"""
             INSERT INTO `{table_name}` ({col_names_str})
             VALUES ({values_str})
@@ -201,23 +142,14 @@ def _insert_excel_data(db: Session, table_name: str, df: pd.DataFrame, columns: 
 
 
 def _preprocess_csv_data(df: pd.DataFrame) -> pd.DataFrame:
-    """
-    Preprocess CSV data by filtering only required columns.
-    
-    Args:
-        df: Raw DataFrame from CSV
-    
-    Returns:
-        pd.DataFrame: Filtered DataFrame with only required columns
-    """
-    # Define the columns to keep (exact names as they appear in CSV)
+   
     required_columns = [
         "Challan Number",
         "Challan Source",
         "Vehicle Number",
         "Challan Date",
         "Challan Place",
-        "Latitue Longtitue",  # Note: keeping original typo as it appears in CSV
+        "Latitue Longtitue", 
         "Violator Name",
         "Violator Address",
         "Violator Contact",
@@ -230,50 +162,40 @@ def _preprocess_csv_data(df: pd.DataFrame) -> pd.DataFrame:
         "Offences"
     ]
     
-    # Check which columns exist in the DataFrame
+  
     available_columns = df.columns.tolist()
     missing_columns = [col for col in required_columns if col not in available_columns]
     
     if missing_columns:
         print(f"[WARNING] Missing columns in CSV: {missing_columns}")
         print(f"[INFO] Available columns: {available_columns}")
-        # Only keep columns that exist
+       
         required_columns = [col for col in required_columns if col in available_columns]
     
-    # Filter DataFrame to only include required columns
+   
     df_filtered = df[required_columns].copy()
     
     return df_filtered
 
 
 def _read_csv_with_preprocessing(file_content: bytes, skip_rows: int = 7) -> pd.DataFrame:
-    """
-    Read CSV file with preprocessing: skip rows and use specific row as header.
-    
-    Args:
-        file_content: CSV file content as bytes
-        skip_rows: Number of rows to skip (default: 7)
-    
-    Returns:
-        pd.DataFrame: Preprocessed DataFrame
-    """
+   
     import io
     
     csv_file = io.BytesIO(file_content)
     
-    # Read CSV: skip first 7 rows, use 8th row (index 7) as header
-    # Data starts from 9th row (index 8) onwards
+   
     try:
-        # Try with on_bad_lines (pandas 1.3+)
+      
         df = pd.read_csv(
             csv_file,
-            skiprows=skip_rows,  # Skip first 7 rows
-            header=0,  # Use the first row after skipping as header (which is the 8th row)
+            skiprows=skip_rows, 
+            header=0, 
             encoding='utf-8',
-            on_bad_lines='skip'  # Skip malformed lines
+            on_bad_lines='skip' 
         )
     except TypeError:
-        # Fallback for older pandas versions
+       
         try:
             df = pd.read_csv(
                 csv_file,
@@ -284,7 +206,7 @@ def _read_csv_with_preprocessing(file_content: bytes, skip_rows: int = 7) -> pd.
                 warn_bad_lines=False
             )
         except TypeError:
-            # If both fail, try without error handling parameter
+           
             df = pd.read_csv(
                 csv_file,
                 skiprows=skip_rows,
@@ -292,37 +214,27 @@ def _read_csv_with_preprocessing(file_content: bytes, skip_rows: int = 7) -> pd.
                 encoding='utf-8'
             )
     
-    # Preprocess: filter only required columns
+  
     df = _preprocess_csv_data(df)
     
     return df
 
 
 def upload_excel_service(file_content: bytes, filename: str, user_id: str) -> dict:
-    """
-    Upload and process Excel or CSV file, creating dynamic table and storing data.
     
-    Args:
-        file_content: File content as bytes (Excel or CSV)
-        filename: Original filename
-        user_id: User ID from JWT token (for data isolation)
-    
-    Returns:
-        dict: Standardized response with upload statistics
-    """
     db: Session = SessionLocal()
     try:
         import io
         
-        # Detect file type
+       
         file_ext = Path(filename).suffix.lower()
         
-        # Read file based on type
+       
         if file_ext == '.csv':
-            # Process CSV file with preprocessing
+           
             df = _read_csv_with_preprocessing(file_content, skip_rows=7)
         elif file_ext in ['.xlsx', '.xls']:
-            # Read Excel file
+         
             excel_file = io.BytesIO(file_content)
             df = pd.read_excel(excel_file, engine='openpyxl')
         else:
@@ -339,7 +251,7 @@ def upload_excel_service(file_content: bytes, filename: str, user_id: str) -> di
                 "data": None
             }
         
-        # Get column names
+      
         columns = df.columns.tolist()
         
         if not columns:
@@ -349,12 +261,12 @@ def upload_excel_service(file_content: bytes, filename: str, user_id: str) -> di
                 "data": None
             }
         
-        # Generate table name from filename and timestamp
-        base_name = Path(filename).stem  # filename without extension
+      
+        base_name = Path(filename).stem  
         timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
         table_name = f"excel_{_sanitize_table_name(base_name)}_{timestamp}"
         
-        # Create dynamic table
+        
         table_created = _create_dynamic_table(db, table_name, columns)
         
         if not table_created:
@@ -364,10 +276,10 @@ def upload_excel_service(file_content: bytes, filename: str, user_id: str) -> di
                 "data": None
             }
         
-        # Insert all rows
+       
         rows_inserted = _insert_excel_data(db, table_name, df, columns)
         
-        # Store metadata in excel_uploads table with user_id
+      
         upload_record = ExcelUploads(
             user_id=user_id,
             filename=filename,
@@ -402,16 +314,7 @@ def upload_excel_service(file_content: bytes, filename: str, user_id: str) -> di
 
 
 def _get_latest_table_name(db: Session, user_id: str) -> Optional[str]:
-    """
-    Get the table name of the most recently uploaded Excel file for a specific user.
-    
-    Args:
-        db: Database session
-        user_id: User ID to filter uploads
-    
-    Returns:
-        str: Table name or None if no uploads exist for this user
-    """
+   
     try:
         latest_upload = db.query(ExcelUploads).filter(
             ExcelUploads.user_id == user_id
@@ -424,18 +327,9 @@ def _get_latest_table_name(db: Session, user_id: str) -> Optional[str]:
 
 
 def _get_table_schema(db: Session, table_name: str) -> str:
-    """
-    Get the schema of a specific table for SQL generation with sample data.
-    
-    Args:
-        db: Database session
-        table_name: Name of the table
-    
-    Returns:
-        str: Table schema description with sample data
-    """
+   
     try:
-        # Get table columns using SQLAlchemy inspector
+       
         inspector = inspect(engine)
         columns = inspector.get_columns(table_name)
         
@@ -443,11 +337,11 @@ def _get_table_schema(db: Session, table_name: str) -> str:
         for col in columns:
             col_name = col['name']
             col_type = str(col['type'])
-            # Skip internal columns
+            
             if col_name not in ['id', 'created_at', 'updated_at']:
                 schema += f"- {col_name} ({col_type})\n"
         
-        # Get multiple sample rows for better context
+      
         sample_query = f"SELECT * FROM `{table_name}` LIMIT 3"
         result = db.execute(text(sample_query))
         sample_rows = result.fetchall()
@@ -457,15 +351,15 @@ def _get_table_schema(db: Session, table_name: str) -> str:
             for idx, row in enumerate(sample_rows, 1):
                 schema += f"\nRow {idx}:\n"
                 for key, value in row._mapping.items():
-                    # Skip internal columns in sample
+                   
                     if key not in ['id', 'created_at', 'updated_at']:
-                        # Truncate very long values
+                    
                         display_value = str(value)
                         if len(display_value) > 100:
                             display_value = display_value[:100] + "..."
                         schema += f"  {key}: {display_value}\n"
         
-        # Get statistics about the table
+      
         count_query = f"SELECT COUNT(*) as total_count FROM `{table_name}`"
         count_result = db.execute(text(count_query))
         total_count = count_result.fetchone()[0]
@@ -477,23 +371,12 @@ def _get_table_schema(db: Session, table_name: str) -> str:
 
 
 def _generate_sql_query(natural_query: str, table_schema: str, table_name: str) -> Optional[str]:
-    """
-    Use Gemini to generate SQL query from natural language.
     
-    Args:
-        natural_query: Natural language query
-        table_schema: Table schema description
-        table_name: Name of the table to query
-    
-    Returns:
-        str: Generated SQL query or None if failed
-    """
-    # Re-check GEMINI_KEY in case it wasn't loaded at module import time
     current_key = os.getenv("GEMINI_KEY")
     if current_key:
         current_key = current_key.strip().strip('"').strip("'")
     
-    # Use current_key if GEMINI_KEY is not set
+  
     api_key = GEMINI_KEY if GEMINI_KEY else current_key
     
     if not api_key:
@@ -502,7 +385,7 @@ def _generate_sql_query(natural_query: str, table_schema: str, table_name: str) 
         print(f"[DEBUG] current_key from env: {current_key}")
         return None
     
-    # Configure if not already configured or if using different key
+   
     if api_key != GEMINI_KEY or not GEMINI_KEY:
         try:
             genai.configure(api_key=api_key)
@@ -512,14 +395,14 @@ def _generate_sql_query(natural_query: str, table_schema: str, table_name: str) 
             return None
     
     try:
-        # Try newer models first, then fallback to older ones
+      
         model = None
         model_names = [
-            'gemini-2.5-flash',      # Latest stable flash model
-            'gemini-flash-latest',    # Latest flash (auto-updates)
-            'gemini-2.0-flash',       # Gemini 2.0 flash
-            'gemini-pro-latest',      # Latest pro (auto-updates)
-            'gemini-pro'              # Fallback to older model
+            'gemini-2.5-flash',     
+            'gemini-flash-latest',    
+            'gemini-2.0-flash',     
+            'gemini-pro-latest',    
+            'gemini-pro'             
         ]
         
         for model_name in model_names:
@@ -668,14 +551,14 @@ Generate the SQL query now (ONLY SQL, no explanations):"""
         
         response = model.generate_content(prompt)
         
-        # Check if response has content
+
         if not response or not hasattr(response, 'text') or not response.text:
             print("[ERROR] Empty response from Gemini API")
             return None
             
         sql_query = response.text.strip()
         
-        # Remove markdown code blocks if present
+
         if sql_query.startswith("```"):
             lines = sql_query.split("\n")
             sql_query = "\n".join(lines[1:-1]) if len(lines) > 2 else sql_query
@@ -688,65 +571,53 @@ Generate the SQL query now (ONLY SQL, no explanations):"""
         error_msg = str(e)
         print(f"[ERROR] Error generating SQL query: {error_msg}")
         print(f"[ERROR] Error type: {type(e).__name__}")
-        # Check if it's an API key error
+       
         if "API key" in error_msg or "authentication" in error_msg.lower() or "401" in error_msg or "403" in error_msg:
             print(f"[ERROR] Gemini API authentication failed. Please check your GEMINI_KEY.")
         return None
 
 
 def _execute_sql_query(db: Session, sql_query: str, top_k: int = 5) -> List[Dict[str, Any]]:
-    """
-    Execute SQL query and return results.
-    
-    Args:
-        db: Database session
-        sql_query: SQL query to execute
-        top_k: Maximum number of results (for non-aggregation queries)
-    
-    Returns:
-        List[Dict]: Query results
-    """
+  
     try:
         sql_lower = sql_query.lower().strip()
         
-        # Check if query is an aggregation query (SUM, AVG, COUNT, MAX, MIN, GROUP BY)
+     
         is_aggregation = any(keyword in sql_lower for keyword in [
             'sum(', 'avg(', 'count(', 'max(', 'min(', 
             'group by', 'having', 'percentage'
         ])
         
-        # For aggregation queries, don't add LIMIT if not present (we want all aggregated results)
-        # For regular SELECT queries, add LIMIT if not present
+        
         if not is_aggregation and 'limit' not in sql_lower:
-            # Increase limit for complex queries that might need more context
+         
             sql_query = f"{sql_query.rstrip(';')} LIMIT {top_k * 2}"
         elif is_aggregation and 'limit' not in sql_lower:
-            # For aggregations, allow more results for comprehensive analysis
+           
             sql_query = f"{sql_query.rstrip(';')} LIMIT 100"
         
-        # Execute query
+       
         result = db.execute(text(sql_query))
         rows = result.fetchall()
         
-        # Convert to list of dictionaries
+      
         results = []
         for row in rows:
             row_dict = {}
             for key, value in row._mapping.items():
-                # Convert non-serializable types
+              
                 if isinstance(value, datetime):
                     row_dict[key] = value.isoformat()
                 elif hasattr(value, '__dict__'):
                     row_dict[key] = str(value)
                 elif isinstance(value, (int, float)) and value is not None:
-                    # Preserve numeric types for better analysis
+                  
                     row_dict[key] = float(value) if isinstance(value, (float, decimal.Decimal)) else int(value)
                 else:
                     row_dict[key] = value
             results.append(row_dict)
         
-        # For non-aggregation queries, limit to top_k
-        # For aggregation queries, return all results (they're already limited by SQL LIMIT)
+       
         if not is_aggregation:
             return results[:top_k]
         return results
@@ -757,17 +628,7 @@ def _execute_sql_query(db: Session, sql_query: str, top_k: int = 5) -> List[Dict
 
 
 def _generate_visualization_data(results: List[Dict[str, Any]], query: str, sql_query: str) -> Optional[Dict[str, Any]]:
-    """
-    Generate structured data for graph visualization.
-    
-    Args:
-        results: Query results
-        query: Original query
-        sql_query: Generated SQL query
-    
-    Returns:
-        dict: Visualization data with chart type, labels, values, etc.
-    """
+   
     if not results:
         return None
     
@@ -775,35 +636,35 @@ def _generate_visualization_data(results: List[Dict[str, Any]], query: str, sql_
         sql_lower = sql_query.lower()
         results_lower = query.lower()
         
-        # Detect chart type based on query and SQL
-        chart_type = "bar_chart"  # default
+      
+        chart_type = "bar_chart"  
         
-        # Check for GROUP BY (categorical breakdown)
+     
         if "group by" in sql_lower:
-            # Extract category column and value column
+            
             first_row = results[0]
             keys = list(first_row.keys())
             
             print(f"[DEBUG] GROUP BY detected. Keys: {keys}")
             print(f"[DEBUG] First row sample: {first_row}")
             
-            # Typically: category column, then aggregated value
+            
             if len(keys) >= 2:
                 category_key = keys[0]
                 value_key = keys[1] if len(keys) > 1 else keys[0]
                 
                 print(f"[DEBUG] Using category_key={category_key}, value_key={value_key}")
                 
-                # Helper function to get value with case-insensitive and space-tolerant matching
+               
                 def get_row_value(row, key):
-                    # Try exact match first
+                  
                     if key in row:
                         return row[key]
-                    # Try case-insensitive match
+                  
                     for k, v in row.items():
                         if k.lower() == key.lower():
                             return v
-                    # Try key with spaces/underscores normalized
+                   
                     key_normalized = key.replace(' ', '_').replace('-', '_').lower()
                     for k, v in row.items():
                         k_normalized = k.replace(' ', '_').replace('-', '_').lower()
@@ -811,39 +672,39 @@ def _generate_visualization_data(results: List[Dict[str, Any]], query: str, sql_
                             return v
                     return None
                 
-                # Extract labels and values
+              
                 labels = []
                 values = []
                 
                 for idx, row in enumerate(results):
-                    # Always append label (even if None/empty)
+                    
                     label_val = get_row_value(row, category_key)
                     if label_val is None:
-                        label_val = row.get(category_key, '')  # Fallback to direct access
+                        label_val = row.get(category_key, '') 
                     labels.append(str(label_val) if label_val is not None else '')
                     
-                    # Always append value (convert to number)
+                  
                     val = get_row_value(row, value_key)
                     if val is None:
-                        val = row.get(value_key, 0)  # Fallback to direct access
+                        val = row.get(value_key, 0)  
                     
-                    # Debug the value
+                   
                     print(f"[DEBUG] Row {idx}: {category_key}={label_val}, {value_key}={val} (type={type(val).__name__})")
                     
-                    # Handle different numeric types including Decimal
+                  
                     numeric_val = 0
                     if val is None:
                         numeric_val = 0
                     elif isinstance(val, (int, float)):
                         numeric_val = float(val)
-                    elif hasattr(val, '__float__'):  # Handles Decimal, numpy types, etc.
+                    elif hasattr(val, '__float__'):  
                         try:
                             numeric_val = float(val)
                         except:
                             numeric_val = 0
                     elif isinstance(val, str):
                         try:
-                            # Remove currency symbols, commas, spaces
+                           
                             cleaned = val.replace(',', '').replace('₹', '').replace('$', '').replace(' ', '').strip()
                             numeric_val = float(cleaned) if cleaned else 0
                         except Exception as e:
@@ -856,7 +717,7 @@ def _generate_visualization_data(results: List[Dict[str, Any]], query: str, sql_
                     values.append(numeric_val)
                     print(f"[DEBUG] Row {idx} final numeric value: {numeric_val}")
                 
-                # Ensure labels and values have same length
+              
                 if len(labels) != len(values):
                     print(f"[WARNING] Mismatch: {len(labels)} labels vs {len(values)} values")
                     min_len = min(len(labels), len(values))
@@ -866,7 +727,7 @@ def _generate_visualization_data(results: List[Dict[str, Any]], query: str, sql_
                 print(f"[DEBUG] Final values array: {values}")
                 print(f"[DEBUG] Max value: {max(values) if values else 'N/A'}, Min value: {min(values) if values else 'N/A'}")
                 
-                # If all values are zero, try to find numeric column automatically
+              
                 if all(v == 0 for v in values) and len(results) > 0:
                     print(f"[DEBUG] All values are zero, trying to find numeric column automatically...")
                     # Try to find a column with numeric values
@@ -1347,15 +1208,7 @@ Now provide a comprehensive, accurate answer to the user's query:"""
 
 
 def list_files_service(user_id: str) -> dict:
-    """
-    List all uploaded files for a specific user.
-    
-    Args:
-        user_id: User ID for data isolation
-    
-    Returns:
-        dict: Standardized response with list of files
-    """
+   
     db: Session = SessionLocal()
     try:
         if not user_id:
@@ -1401,16 +1254,7 @@ def list_files_service(user_id: str) -> dict:
 
 
 def _drop_table(db: Session, table_name: str) -> bool:
-    """
-    Drop a database table.
-    
-    Args:
-        db: Database session
-        table_name: Name of the table to drop
-    
-    Returns:
-        bool: True if successful, False otherwise
-    """
+  
     try:
         drop_sql = f"DROP TABLE IF EXISTS `{table_name}`"
         db.execute(text(drop_sql))
@@ -1423,16 +1267,7 @@ def _drop_table(db: Session, table_name: str) -> bool:
 
 
 def delete_file_service(file_id: str, user_id: str) -> dict:
-    """
-    Delete an uploaded file and its associated database table.
-    
-    Args:
-        file_id: ID of the file upload record to delete
-        user_id: User ID for data isolation (security check)
-    
-    Returns:
-        dict: Standardized response with deletion status
-    """
+ 
     db: Session = SessionLocal()
     try:
         if not user_id:
@@ -1490,17 +1325,7 @@ def delete_file_service(file_id: str, user_id: str) -> dict:
 
 
 def _get_table_name_by_id_or_latest(db: Session, user_id: str, table_name: Optional[str] = None) -> Optional[str]:
-    """
-    Get table name either from provided table_name or from latest upload.
-    
-    Args:
-        db: Database session
-        user_id: User ID for data isolation
-        table_name: Optional specific table name to use
-    
-    Returns:
-        str: Table name or None if not found
-    """
+   
     if table_name:
         # Verify the table belongs to this user
         upload = db.query(ExcelUploads).filter(
@@ -1516,19 +1341,7 @@ def _get_table_name_by_id_or_latest(db: Session, user_id: str, table_name: Optio
 
 
 def query_service(query: str, top_k: int = 5, user_id: str = None, mode: str = "text", table_name: Optional[str] = None) -> dict:
-    """
-    Process natural language query using RAG system.
-    
-    Args:
-        query: Natural language query
-        top_k: Number of top results to retrieve
-        user_id: User ID for data isolation
-        mode: Response mode - "text", "graph", or "table"
-        table_name: Optional specific table name to query. If None, uses latest uploaded file.
-    
-    Returns:
-        dict: Standardized response with answer and results
-    """
+   
     db: Session = SessionLocal()
     try:
         if not query or not query.strip():
@@ -1607,8 +1420,7 @@ def query_service(query: str, top_k: int = 5, user_id: str = None, mode: str = "
             if table_data:
                 response_data["table_data"] = table_data
         
-        # For text mode, keep answer concise (already generated above)
-        # For graph/table modes, we still include answer as summary
+
         
         return {
             "status": True,
