@@ -1,7 +1,7 @@
 
 from typing import Optional, Dict, Any, List
 
-# Third-party imports
+
 from pydantic import BaseModel, Field
 
 

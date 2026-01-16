@@ -1,21 +1,21 @@
 
 
-# Standard library imports
+
 import random
 import string
 from typing import Optional
 
-# Third-party imports
+
 from fastapi_mail import FastMail, MessageSchema, ConnectionConfig
 from dotenv import load_dotenv
 import os
 import asyncio
 from concurrent.futures import ThreadPoolExecutor
 
-# Load environment variables
+
 load_dotenv()
 
-# Email configuration from environment variables
+
 MAIL_USERNAME = os.getenv("MAIL_USERNAME", "noreply@example.com")
 MAIL_PASSWORD = os.getenv("MAIL_PASSWORD", "default_password")
 MAIL_FROM = os.getenv("MAIL_FROM", MAIL_USERNAME)
@@ -27,7 +27,7 @@ MAIL_SSL_TLS = os.getenv("MAIL_SSL_TLS", "False").lower() == "true"
 MAIL_USE_CREDENTIALS = os.getenv("MAIL_USE_CREDENTIALS", "True").lower() == "true"
 MAIL_VALIDATE_CERTS = os.getenv("MAIL_VALIDATE_CERTS", "True").lower() == "true"
 
-# FastAPIMail configuration
+
 mail_config = ConnectionConfig(
     MAIL_USERNAME=MAIL_USERNAME,
     MAIL_PASSWORD=MAIL_PASSWORD,
@@ -42,10 +42,9 @@ mail_config = ConnectionConfig(
     TEMPLATE_FOLDER=None
 )
 
-# FastMail instance
+
 fastmail = FastMail(mail_config)
 
-# Thread pool for non-blocking email sending
 email_executor = ThreadPoolExecutor(max_workers=5)
 
 
@@ -56,10 +55,10 @@ def generate_otp(length: int = 6) -> str:
 
 async def send_otp_email(email: str, otp: str) -> bool:
   
-    # Development mode: Log OTP to console if email credentials not configured
+
     if not MAIL_USERNAME or not MAIL_PASSWORD:
         print("=" * 60)
-        print("⚠️  EMAIL NOT CONFIGURED - DEVELOPMENT MODE")
+        print("  EMAIL NOT CONFIGURED - DEVELOPMENT MODE")
         print("=" * 60)
         print(f"OTP for {email}: {otp}")
         print(f"This OTP expires in 5 minutes")
@@ -119,7 +118,7 @@ async def _send_email_task(email: str, otp: str):
             print("2. Verify firewall allows SMTP (port 587)")
             print("3. Check MAIL_SERVER and MAIL_PORT in .env")
         
-        print("\n📝 OTP for development/testing:")
+        print("\n OTP for development/testing:")
         print(f"   Email: {email}")
         print(f"   OTP: {otp}")
         print("=" * 60)

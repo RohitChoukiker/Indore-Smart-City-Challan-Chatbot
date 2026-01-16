@@ -1,21 +1,15 @@
 
-# Standard library imports
+
 import sys
 from pathlib import Path
 from typing import Optional
-
-# Third-party imports
 from fastapi import APIRouter, Depends, Header, HTTPException, UploadFile, File, Form
-
-# Add parent directories to path for imports
 sys.path.insert(0, str(Path(__file__).parent.parent.parent))
-
-# Local application imports
 from utills.auth_utils import get_user_id_from_token
 from .agent_dto import QueryRequest
 from .agent_service import upload_excel_service, query_service, list_files_service, delete_file_service
 
-# Create router
+
 agentRouter = APIRouter(tags=["Agent"])
 
 
@@ -33,7 +27,7 @@ async def upload_excel(
     user_id: str = Depends(_user_id_dep)
 ):
    
-    # Validate file type
+
     if not file.filename.endswith(('.xlsx', '.xls', '.csv')):
         return {
             "status": False,
@@ -41,7 +35,7 @@ async def upload_excel(
             "data": None
         }
     
-    # Read file content
+   
     file_content = await file.read()
     
     return upload_excel_service(file_content, file.filename, user_id)
@@ -50,7 +44,7 @@ async def upload_excel(
 @agentRouter.post("/query")
 def query_agent(req: QueryRequest, user_id: str = Depends(_user_id_dep)):
    
-    # Validate mode
+   
     valid_modes = ["text", "graph", "table"]
     mode = req.mode.lower() if req.mode else "text"
     if mode not in valid_modes:
