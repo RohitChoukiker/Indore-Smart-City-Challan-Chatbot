@@ -8,13 +8,11 @@
     max-width: 800px;
     flex-shrink: 0;
     margin-top: auto;
+    gap: 4px;
 }
 
-/* Center ChatInput when no messages exist - remove auto margin */
 .content-wrapper:not(:has(.messages-container)) .chat-input-container {
     margin-top: 0;
-    position: relative;
-    transform: none;
 }
 
 .add-btn {
@@ -29,18 +27,17 @@
     align-items: center;
     justify-content: center;
     transition: border-color 0.2s ease;
+    flex-shrink: 0;
 }
 
 .add-btn:hover {
     border-color: #ff8c00;
-    color: var(--icon-color);
 }
 
 .input-wrapper {
     flex: 1;
     display: flex;
     align-items: center;
-    position: relative;
 }
 
 .chat-input {
@@ -49,8 +46,37 @@
     border: none;
     color: var(--text-color);
     font-size: 1rem;
-    padding: 0 15px;
+    padding: 0 10px;
     outline: none;
+}
+
+.chat-input::placeholder {
+    color: var(--icon-color);
+}
+
+.input-actions {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    flex-shrink: 0;
+}
+
+.action-btn {
+    background: none;
+    border: 2px solid transparent;
+    color: var(--icon-color);
+    font-size: 1.1rem;
+    cursor: pointer;
+    padding: 8px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: border-color 0.2s ease;
+}
+
+.action-btn:hover {
+    border-color: #ff8c00;
 }
 
 .send-btn {
@@ -79,7 +105,6 @@
 
 .send-btn.visible:hover {
     background-color: var(--accent-color);
-    color: var(--brand-color);
     transform: scale(1.1);
 }
 
@@ -87,30 +112,7 @@
     transform: scale(0.95);
 }
 
-.input-actions {
-    display: flex;
-    gap: 10px;
-}
-
-.action-btn {
-    background: none;
-    border: 2px solid transparent;
-    color: var(--icon-color);
-    font-size: 1.1rem;
-    cursor: pointer;
-    padding: 8px;
-    border-radius: 50%;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    transition: border-color 0.2s ease;
-}
-
-.action-btn:hover {
-    border-color: #ff8c00;
-    color: var(--icon-color);
-}
-
+/* ── Relative container for dropdowns ── */
 .relative-container {
     position: relative;
 }
@@ -128,11 +130,6 @@
     box-shadow: 0 4px 6px rgba(0, 0, 0, 0.3);
     z-index: 10;
     margin-bottom: 10px;
-}
-
-.mode-menu {
-    right: 0;
-    left: auto;
 }
 
 .dropdown-menu button {
@@ -153,6 +150,7 @@
     color: var(--text-color);
 }
 
+/* ── Upload menu ── */
 .upload-menu {
     min-width: 280px;
     max-width: 350px;
@@ -186,9 +184,19 @@
     padding: 8px 12px;
     font-size: 0.85rem;
     font-weight: 600;
-    color: var(--icon-color);
+    color: var(--text-color);
+    border-bottom: 1px solid var(--hover-color);
+    display: flex;
+    align-items: center;
+    gap: 8px;
     text-transform: uppercase;
     letter-spacing: 0.5px;
+}
+
+.selected-indicator {
+    font-size: 0.75rem;
+    color: var(--brand-color);
+    font-weight: 500;
 }
 
 .uploaded-files-list {
@@ -254,23 +262,6 @@
     margin-top: 2px;
 }
 
-.success-icon-wrapper {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    flex-shrink: 0;
-    width: 20px;
-    height: 20px;
-}
-
-.success-icon {
-    color: #4CAF50;
-    font-size: 0.85rem;
-    animation: fadeIn 0.3s ease;
-    width: 100%;
-    height: 100%;
-}
-
 .file-actions {
     display: flex;
     align-items: center;
@@ -308,30 +299,9 @@
     transform: scale(1.1);
 }
 
-.delete-file-btn:active {
-    transform: scale(0.95);
-}
-
 .delete-file-btn:disabled {
     opacity: 0.5;
     cursor: not-allowed;
-}
-
-.uploaded-files-header {
-    font-size: 0.85rem;
-    font-weight: 600;
-    color: var(--text-color);
-    padding: 8px 12px;
-    border-bottom: 1px solid var(--hover-color);
-    display: flex;
-    align-items: center;
-    gap: 8px;
-}
-
-.selected-indicator {
-    font-size: 0.75rem;
-    color: var(--brand-color);
-    font-weight: 500;
 }
 
 .loading-files {
@@ -352,24 +322,7 @@
     font-size: 0.9rem;
 }
 
-.loading-spinner.small {
-    width: 12px;
-    height: 12px;
-    border-width: 2px;
-}
-
-@keyframes fadeIn {
-    from {
-        opacity: 0;
-        transform: scale(0.8);
-    }
-    to {
-        opacity: 1;
-        transform: scale(1);
-    }
-}
-
-/* Upload Progress Overlay */
+/* ── Upload progress overlay ── */
 .upload-progress-overlay {
     position: fixed;
     top: 0;
@@ -394,24 +347,8 @@
     animation: slideUp 0.3s ease;
 }
 
-.upload-progress-card.success {
-    border: 2px solid #4CAF50;
-}
-
-.upload-progress-card.error {
-    border: 2px solid #f44336;
-}
-
-@keyframes slideUp {
-    from {
-        opacity: 0;
-        transform: translateY(20px);
-    }
-    to {
-        opacity: 1;
-        transform: translateY(0);
-    }
-}
+.upload-progress-card.success { border: 2px solid #4CAF50; }
+.upload-progress-card.error { border: 2px solid #f44336; }
 
 .upload-progress-header {
     display: flex;
@@ -420,10 +357,7 @@
     margin-bottom: 16px;
 }
 
-.upload-icon {
-    color: var(--brand-color);
-    font-size: 1.5rem;
-}
+.upload-icon { color: var(--brand-color); font-size: 1.5rem; }
 
 .upload-file-name {
     font-weight: 600;
@@ -459,27 +393,6 @@
     animation: successPulse 0.5s ease;
 }
 
-@keyframes progressPulse {
-    0%, 100% {
-        opacity: 1;
-    }
-    50% {
-        opacity: 0.7;
-    }
-}
-
-@keyframes successPulse {
-    0% {
-        transform: scaleX(0.95);
-    }
-    50% {
-        transform: scaleX(1.02);
-    }
-    100% {
-        transform: scaleX(1);
-    }
-}
-
 .upload-progress-text {
     display: flex;
     align-items: center;
@@ -488,39 +401,6 @@
     font-size: 0.9rem;
     color: var(--text-color);
     font-weight: 500;
-}
-
-.loading-spinner {
-    width: 16px;
-    height: 16px;
-    border: 2px solid var(--hover-color);
-    border-top-color: var(--brand-color);
-    border-radius: 50%;
-    animation: spin 1s linear infinite;
-}
-
-@keyframes spin {
-    to {
-        transform: rotate(360deg);
-    }
-}
-
-.success-check-icon {
-    color: #4CAF50;
-    font-size: 1.2rem;
-    animation: checkBounce 0.5s ease;
-}
-
-@keyframes checkBounce {
-    0% {
-        transform: scale(0);
-    }
-    50% {
-        transform: scale(1.2);
-    }
-    100% {
-        transform: scale(1);
-    }
 }
 
 .upload-error {
@@ -532,19 +412,52 @@
     margin-top: 12px;
 }
 
+/* ── Spinners & animations ── */
+.loading-spinner {
+    width: 16px;
+    height: 16px;
+    border: 2px solid var(--hover-color);
+    border-top-color: var(--brand-color);
+    border-radius: 50%;
+    animation: spin 1s linear infinite;
+    display: inline-block;
+}
+
+.loading-spinner.small {
+    width: 12px;
+    height: 12px;
+    border-width: 2px;
+}
+
+.success-check-icon {
+    color: #4CAF50;
+    font-size: 1.2rem;
+    animation: checkBounce 0.5s ease;
+}
+
+@keyframes spin { to { transform: rotate(360deg); } }
+@keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+@keyframes slideUp {
+    from { opacity: 0; transform: translateY(20px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+@keyframes progressPulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.7; } }
+@keyframes successPulse {
+    0% { transform: scaleX(0.95); }
+    50% { transform: scaleX(1.02); }
+    100% { transform: scaleX(1); }
+}
+@keyframes checkBounce {
+    0% { transform: scale(0); }
+    50% { transform: scale(1.2); }
+    100% { transform: scale(1); }
+}
+
 @media (max-width: 768px) {
     .chat-input-container {
         width: 90%;
         padding: 8px 10px;
     }
-
-    .chat-input {
-        font-size: 0.9rem;
-    }
-
-    .add-btn,
-    .action-btn {
-        font-size: 1rem;
-        padding: 6px;
-    }
+    .chat-input { font-size: 0.9rem; }
+    .add-btn, .action-btn { font-size: 1rem; padding: 6px; }
 }

@@ -1,29 +1,14 @@
-
 import os
 import uuid
 from datetime import datetime
-from typing import Optional
-
 
 from dotenv import load_dotenv
 from sqlalchemy import Column, String, DateTime, Integer, ForeignKey, JSON, create_engine
-from sqlalchemy.ext.declarative import declarative_base
-from sqlalchemy.orm import sessionmaker, Session
-
+from sqlalchemy.orm import declarative_base, sessionmaker
 
 load_dotenv()
 
-
-DB_HOST = os.getenv("DB_HOST", "localhost")
-DB_PORT = os.getenv("DB_PORT", "3306")
-DB_USER = os.getenv("DB_USER", "root")
-DB_PASSWORD = os.getenv("DB_PASSWORD", "")
-DB_NAME = os.getenv("DB_NAME", "smart_city_db")
-DB_DRIVER = os.getenv("DB_DRIVER", "pymysql")
-
-
-DATABASE_URL = f"mysql+{DB_DRIVER}://{DB_USER}:{DB_PASSWORD}@{DB_HOST}:{DB_PORT}/{DB_NAME}?charset=utf8mb4"
-
+DATABASE_URL = os.getenv("DATABASE_URL")
 
 engine = create_engine(
     DATABASE_URL,
@@ -32,11 +17,14 @@ engine = create_engine(
     echo=False
 )
 
-
-SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
-
+SessionLocal = sessionmaker(
+    autocommit=False,
+    autoflush=False,
+    bind=engine
+)
 
 Base = declarative_base()
+
 
 
 def generate_uuid() -> str:
