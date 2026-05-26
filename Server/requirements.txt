@@ -21,16 +21,16 @@ fastapi-mail==1.4.1
 # HTTP Client
 httpx==0.27.2
 
-# Env
+# Environment Variables
 python-dotenv==1.0.1
 
-# Excel
+# Excel Processing
 pandas==2.2.2
 openpyxl==3.1.5
 xlrd==2.0.1
 
-# Uploads
+# File Uploads
 python-multipart==0.0.9
 
-# Gemini
+# Gemini AI
 google-generativeai==0.7.2
